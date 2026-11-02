@@ -379,7 +379,7 @@ export async function createPostComment(req, res, next) {
     }
 
     const mentionedUsernames = [...new Set(
-      [...parsed.data.content.matchAll(/(?:^|[^\\w@])@([A-Za-z0-9_]{2,24})(?![A-Za-z0-9_])/g)]
+      [...parsed.data.content.matchAll(/(?:^|[^\w@])@([A-Za-z0-9_]{2,24})(?![A-Za-z0-9_])/g)]
         .map(match => match[1])
     )];
     if (mentionedUsernames.length) {
