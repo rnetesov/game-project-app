@@ -34,7 +34,7 @@ export default function Profile() {
     let cancelled = false;
     setFriendship(null);
     Promise.all([getProfile(viewedUsername), getUserGameLibrary(viewedUsername)])
-      .then(([profileResult, libraryResult]) => {
+      .then(async ([profileResult, libraryResult]) => {
         if (cancelled) return;
         const data = profileResult.user;
         setProfile(data);
