@@ -88,15 +88,56 @@ export async function listPosts(req, res, next) {
   const parsed = z.object({
     cursor: z.string().min(1).optional(),
     limit: z.coerce.number().int().min(1).max(30).default(10),
+    filter: z.enum(['all', 'friends', 'popular']).default('all'),
+    q: z.string().trim().max(100, 'Поисковый запрос слишком длинный').default(''),
   }).safeParse(req.query);
   if (!parsed.success) return res.status(400).json({ success: false, message: 'Некорректные параметры ленты' });
 
   try {
-    const { cursor, limit } = parsed.data;
+    const { cursor, limit, filter, q } = parsed.data;
+    const where = {};
+
+    if (filter === 'friends') {
+      const friendships = await prisma.friendRequest.findMany({
+        where: {
+          status: 'ACCEPTED',
+          OR: [
+            { senderId: req.user.id },
+            { receiverId: req.user.id },
+          ],
+        },
+        select: { senderId: true, receiverId: true },
+      });
+      const friendIds = friendships.map(friendship =>
+        friendship.senderId === req.user.id ? friendship.receiverId : friendship.senderId
+      );
+      if (friendIds.length === 0) {
+        return res.json({ success: true, posts: [], nextCursor: null });
+      }
+      where.authorId = { in: friendIds };
+    }
+
+    if (q) {
+      where.OR = [
+        { content: { contains: q } },
+        { author: { is: { username: { contains: q } } } },
+      ];
+    }
+
+    const orderBy = filter === 'popular'
+      ? [
+        { reactions: { _count: 'desc' } },
+        { comments: { _count: 'desc' } },
+        { createdAt: 'desc' },
+        { id: 'desc' },
+      ]
+      : [{ createdAt: 'desc' }, { id: 'desc' }];
+
     const rows = await prisma.post.findMany({
+      where,
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      orderBy,
       select: postSelect,
     });
     const hasMore = rows.length > limit;

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  MessageSquare, Send, Trash2, Newspaper, RefreshCw, Pencil,
+  MessageSquare, Send, Trash2, Newspaper, RefreshCw, Pencil, Search, Users, TrendingUp,
   ImagePlus, X, ClipboardPaste,
 } from 'lucide-react';
 import {
@@ -55,6 +55,10 @@ export default function ActivityFeed() {
   const requestedCommentPostIdRef = useRef(null);
   const [posts, setPosts] = useState([]);
   const [cursor, setCursor] = useState(null);
+  const [feedFilter, setFeedFilter] = useState('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const loadSequenceRef = useRef(0);
   const [content, setContent] = useState('');
   const [contentTextLength, setContentTextLength] = useState(0);
   const [attachments, setAttachments] = useState([]);
@@ -142,20 +146,31 @@ export default function ActivityFeed() {
   }, [lightboxImage]);
 
   const load = useCallback(async (nextCursor = null) => {
+    const requestId = ++loadSequenceRef.current;
     if (nextCursor) setLoadingMore(true);
     else setLoading(true);
     setError('');
     try {
-      const data = await getPosts({ cursor: nextCursor, limit: 10 });
+      const data = await getPosts({
+        cursor: nextCursor,
+        limit: 10,
+        filter: feedFilter,
+        query: searchQuery,
+      });
+      if (requestId !== loadSequenceRef.current) return;
       setPosts(current => nextCursor ? [...current, ...data.posts] : data.posts);
       setCursor(data.nextCursor);
     } catch (err) {
-      setError(err.message || 'Не удалось загрузить ленту');
+      if (requestId === loadSequenceRef.current) {
+        setError(err.message || 'Не удалось загрузить ленту');
+      }
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (requestId === loadSequenceRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
-  }, []);
+  }, [feedFilter, searchQuery]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -237,6 +252,16 @@ export default function ActivityFeed() {
     window.setTimeout(() => element.classList.remove('is-notification-target'), 2600);
     clearTargetParams();
   }, [targetPostId, targetCommentId, posts, loading, comments, expandedComments, setSearchParams]);
+
+  function submitFeedSearch(event) {
+    event.preventDefault();
+    setSearchQuery(searchInput.trim());
+  }
+
+  function clearFeedSearch() {
+    setSearchInput('');
+    setSearchQuery('');
+  }
 
   function handleEditorChange(nextContent, nextTextLength) {
     setContent(nextContent);
@@ -486,9 +511,48 @@ export default function ActivityFeed() {
       <div className="feed-upload-limits">JPG, PNG, WEBP или GIF · до 4 изображений · максимум 8 МБ каждое</div>
     </form>
 
-    <div className="feed-list-heading"><div><h2>Последние публикации</h2><p>Общайся с другими игроками</p></div><button className="feed-refresh" onClick={() => load()} title="Обновить"><RefreshCw size={16} /></button></div>
+    <div className="feed-list-heading">
+      <div>
+        <h2>{feedFilter === 'friends' ? 'Публикации друзей' : feedFilter === 'popular' ? 'Популярные публикации' : 'Последние публикации'}</h2>
+        <p>{searchQuery ? 'Результаты поиска: ' + searchQuery : 'Общайся с другими игроками'}</p>
+      </div>
+      <button className="feed-refresh" onClick={() => load()} title="Обновить"><RefreshCw size={16} /></button>
+    </div>
+    <section className="feed-discovery" aria-label="Фильтры и поиск ленты">
+      <div className="feed-filter-tabs" role="group" aria-label="Фильтр публикаций">
+        <button type="button" className={feedFilter === 'all' ? 'active' : ''} aria-pressed={feedFilter === 'all'} onClick={() => setFeedFilter('all')}>
+          Все публикации
+        </button>
+        <button type="button" className={feedFilter === 'friends' ? 'active' : ''} aria-pressed={feedFilter === 'friends'} onClick={() => setFeedFilter('friends')}>
+          <Users size={14} /> Друзья
+        </button>
+        <button type="button" className={feedFilter === 'popular' ? 'active' : ''} aria-pressed={feedFilter === 'popular'} onClick={() => setFeedFilter('popular')}>
+          <TrendingUp size={14} /> Популярное
+        </button>
+      </div>
+      <form className="feed-search-form" onSubmit={submitFeedSearch}>
+        <Search size={16} />
+        <input
+          type="search"
+          value={searchInput}
+          onChange={event => setSearchInput(event.target.value)}
+          maxLength={100}
+          placeholder="Поиск по тексту или автору..."
+          aria-label="Поиск по тексту публикации или имени автора"
+        />
+        {searchInput && <button type="button" className="feed-search-clear" onClick={() => { setSearchInput(''); if (searchQuery) setSearchQuery(''); }} aria-label="Очистить поиск"><X size={14} /></button>}
+        <button type="submit" className="feed-search-submit" disabled={searchInput.trim() === searchQuery}>Найти</button>
+      </form>
+      {searchQuery && <button type="button" className="feed-search-reset" onClick={clearFeedSearch}>Сбросить поиск: «{searchQuery}»</button>}
+    </section>
     {error && <div className="feed-error">{error}</div>}
-    {loading ? <div className="feed-state">Загружаем публикации...</div> : posts.length === 0 ? <div className="feed-empty"><MessageSquare size={28} /><strong>Пока здесь тихо</strong><span>Стань первым, кто поделится новостью!</span></div> : <div className="feed-posts">
+    {loading ? <div className="feed-state">Загружаем публикации...</div> : posts.length === 0 ? (
+      <div className="feed-empty">
+        <MessageSquare size={28} />
+        <strong>{searchQuery ? 'Ничего не найдено' : feedFilter === 'friends' ? 'У друзей пока нет публикаций' : feedFilter === 'popular' ? 'Пока нет популярных публикаций' : 'Пока здесь тихо'}</strong>
+        <span>{searchQuery ? 'Попробуй изменить запрос или сбросить поиск.' : feedFilter === 'friends' ? 'Публикации друзей появятся здесь после того, как они поделятся новостями.' : feedFilter === 'popular' ? 'Популярные записи появятся, когда у публикаций появятся реакции и комментарии.' : 'Стань первым, кто поделится новостью!'}</span>
+      </div>
+    ) : <div className="feed-posts">
       {posts.map(post => <article id={'feed-post-' + post.id} className="feed-post" key={post.id}>
         <div className="feed-post-head"><Avatar author={post.author} /><div className="feed-author"><Link to={post.authorId === user?.id ? '/profile' : `/profile?user=${encodeURIComponent(post.author.username)}`}>{post.author.username}</Link><time>{formatDate(post.createdAt)}{post.updatedAt && new Date(post.updatedAt) > new Date(post.createdAt) ? ' · изменено' : ''}</time></div>
           {post.authorId === user?.id && <>
