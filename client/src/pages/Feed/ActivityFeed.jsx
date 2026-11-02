@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  MessageSquare, Send, Trash2, Newspaper, RefreshCw, Heart, Pencil,
+  MessageSquare, Send, Trash2, Newspaper, RefreshCw, Pencil,
   ImagePlus, X, ClipboardPaste,
 } from 'lucide-react';
 import {
-  createPost, deletePost, getPosts, togglePostLike,
+  createPost, deletePost, getPosts, togglePostReaction, getPostReactions,
   getPostComments, createPostComment, deletePostComment, getAssetUrl,
 } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -45,6 +45,7 @@ export default function ActivityFeed() {
   const [comments, setComments] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
   const [commentBusy, setCommentBusy] = useState({});
+  const [reactionDetails, setReactionDetails] = useState({});
   const fileInputRef = useRef(null);
   const editorRef = useRef(null);
   const attachmentRef = useRef([]);
@@ -172,17 +173,35 @@ export default function ActivityFeed() {
     }
   }
 
-  async function handleLike(post) {
+  async function handleReaction(post, type) {
     setCommentBusy(current => ({ ...current, [post.id]: true }));
     try {
-      const result = await togglePostLike(post.id);
+      const result = await togglePostReaction(post.id, type);
       setPosts(current => current.map(item => item.id === post.id
-        ? { ...item, likedByMe: result.liked, _count: { ...item._count, likes: result.count } }
+        ? { ...item, myReaction: result.myReaction, reactionCounts: result.reactionCounts }
         : item));
+      if (reactionDetails[post.id]?.open) {
+        const details = await getPostReactions(post.id);
+        setReactionDetails(current => ({ ...current, [post.id]: { open: true, reactions: details.reactions } }));
+      }
     } catch (err) {
       setError(err.message || 'Не удалось изменить реакцию');
     } finally {
       setCommentBusy(current => ({ ...current, [post.id]: false }));
+    }
+  }
+
+  async function toggleReactionDetails(postId) {
+    const current = reactionDetails[postId];
+    if (current?.open) {
+      setReactionDetails(state => ({ ...state, [postId]: { ...state[postId], open: false } }));
+      return;
+    }
+    try {
+      const data = await getPostReactions(postId);
+      setReactionDetails(state => ({ ...state, [postId]: { open: true, reactions: data.reactions } }));
+    } catch (err) {
+      setError(err.message || 'Не удалось загрузить список реакций');
     }
   }
 
@@ -319,14 +338,45 @@ export default function ActivityFeed() {
             <img src={getAssetUrl(image.url)} alt={'Изображение публикации ' + (index + 1)} loading="lazy" />
           </button>)}
         </div>}
-        <div className="feed-actions">
-          <button className={post.likedByMe ? 'feed-action is-liked' : 'feed-action'} onClick={() => handleLike(post)} disabled={commentBusy[post.id]}>
-            <Heart size={16} fill={post.likedByMe ? 'currentColor' : 'none'} /> Нравится <span>{post._count?.likes || 0}</span>
-          </button>
+        <div className="feed-actions feed-actions-expanded">
+          <div className="feed-reaction-picker" aria-label="Реакции">
+            {[
+              ['FIRE', '🔥', 'Огонь'], ['HEART', '❤️', 'Нравится'], ['LAUGH', '😂', 'Смешно'],
+              ['WOW', '😮', 'Удивительно'], ['SAD', '😢', 'Грустно'],
+            ].map(([type, emoji, label]) => (
+              <button
+                type="button"
+                key={type}
+                className={'feed-reaction' + (post.myReaction === type ? ' is-selected' : '')}
+                onClick={() => handleReaction(post, type)}
+                disabled={commentBusy[post.id]}
+                title={label}
+                aria-label={label + ': ' + (post.reactionCounts?.[type] || 0)}
+              >
+                <span>{emoji}</span><b>{post.reactionCounts?.[type] || 0}</b>
+              </button>
+            ))}
+            <button type="button" className="feed-reaction-people" onClick={() => toggleReactionDetails(post.id)}>
+              Кто реагировал
+            </button>
+          </div>
           <button className="feed-action" onClick={() => toggleComments(post.id)}>
             <MessageSquare size={16} /> Комментарии <span>{post._count?.comments || 0}</span>
           </button>
         </div>
+        {reactionDetails[post.id]?.open && (
+          <div className="feed-reaction-details">
+            {reactionDetails[post.id].reactions.length === 0 ? <span>Пока никто не отреагировал</span> :
+              reactionDetails[post.id].reactions.map((reaction, index) => (
+                <div className="feed-reaction-person" key={reaction.user.id + '-' + reaction.type}>
+                  <span>{({ FIRE: '🔥', HEART: '❤️', LAUGH: '😂', WOW: '😮', SAD: '😢' })[reaction.type]}</span>
+                  <Link to={reaction.user.id === user?.id ? '/profile' : '/profile?user=' + encodeURIComponent(reaction.user.username)}>
+                    {reaction.user.username}
+                  </Link>
+                </div>
+              ))}
+          </div>
+        )}
         </>}
         {expandedComments[post.id] && <section className="feed-comments">
           {(comments[post.id] || []).map(comment => <div className="feed-comment" key={comment.id}>
