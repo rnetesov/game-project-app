@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Check, Clock3, Search, UserMinus, UserPlus, Users, X, RefreshCw } from 'lucide-react';
 import { getFriends, getFriendRequests, removeFriend, respondFriendRequest, searchPlayers, sendFriendRequest } from '../../services/api.js';
 
@@ -11,7 +12,20 @@ function Status({ online }) {
   return <span className={`friend-status ${online ? 'online' : ''}`}><i />{online ? 'В сети' : 'Не в сети'}</span>;
 }
 function PlayerCard({ user, action, secondary }) {
-  return <div className="friend-card"><Avatar user={user}/><div className="friend-card-info"><strong>{user.username}</strong><small>Уровень {user.level || 1}</small><Status online={user.online}/></div><div className="friend-card-actions">{action}{secondary}</div></div>;
+  const profileUrl = '/profile?user=' + encodeURIComponent(user.username);
+  return (
+    <div className="friend-card">
+      <Link className="friend-profile-link" to={profileUrl} aria-label={'Открыть профиль ' + user.username}>
+        <Avatar user={user}/>
+        <div className="friend-card-info">
+          <strong>{user.username}</strong>
+          <small>Уровень {user.level || 1}</small>
+          <Status online={user.online}/>
+        </div>
+      </Link>
+      <div className="friend-card-actions">{action}{secondary}</div>
+    </div>
+  );
 }
 export default function Friends() {
   const [friends, setFriends] = useState([]);
