@@ -311,7 +311,7 @@ export default function ActivityFeed() {
   async function toggleComments(postId) {
     const opening = !expandedComments[postId];
     setExpandedComments(current => ({ ...current, [postId]: opening }));
-    if (opening && !comments[postId]) {
+    if (opening && !Object.prototype.hasOwnProperty.call(comments, postId)) {
       try {
         const data = await getPostComments(postId);
         setComments(current => ({ ...current, [postId]: data.comments }));
@@ -321,18 +321,24 @@ export default function ActivityFeed() {
     }
   }
 
-  async function submitComment(event, postId) {
+  async function submitComment(event, postId, parentId = null) {
     event.preventDefault();
-    const text = (commentDrafts[postId] || '').trim();
+    const draft = parentId ? (replyDrafts[parentId] || '') : (commentDrafts[postId] || '');
+    const text = draft.trim();
     if (!text || commentBusy[postId]) return;
     setCommentBusy(current => ({ ...current, [postId]: true }));
     try {
-      const data = await createPostComment(postId, text);
+      const data = await createPostComment(postId, text, parentId);
       setComments(current => ({ ...current, [postId]: [...(current[postId] || []), data.comment] }));
       setPosts(current => current.map(post => post.id === postId
         ? { ...post, _count: { ...post._count, comments: (post._count?.comments || 0) + 1 } }
         : post));
-      setCommentDrafts(current => ({ ...current, [postId]: '' }));
+      if (parentId) {
+        setReplyDrafts(current => ({ ...current, [parentId]: '' }));
+        setReplyingTo(null);
+      } else {
+        setCommentDrafts(current => ({ ...current, [postId]: '' }));
+      }
     } catch (err) {
       setError(err.message || 'Не удалось добавить комментарий');
     } finally {
@@ -342,14 +348,77 @@ export default function ActivityFeed() {
 
   async function removeComment(postId, commentId) {
     try {
-      await deletePostComment(postId, commentId);
-      setComments(current => ({ ...current, [postId]: current[postId].filter(comment => comment.id !== commentId) }));
+      const result = await deletePostComment(postId, commentId);
+      const currentComments = comments[postId] || [];
+      const deletedIds = new Set([commentId]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const comment of currentComments) {
+          if (comment.parentId && deletedIds.has(comment.parentId) && !deletedIds.has(comment.id)) {
+            deletedIds.add(comment.id);
+            changed = true;
+          }
+        }
+      }
+      setComments(current => ({
+        ...current,
+        [postId]: (current[postId] || []).filter(comment => !deletedIds.has(comment.id)),
+      }));
+      if (replyingTo && deletedIds.has(replyingTo)) setReplyingTo(null);
       setPosts(current => current.map(post => post.id === postId
-        ? { ...post, _count: { ...post._count, comments: Math.max(0, (post._count?.comments || 1) - 1) } }
+        ? { ...post, _count: { ...post._count, comments: Math.max(0, (post._count?.comments || 0) - (result.deletedCount || deletedIds.size)) } }
         : post));
     } catch (err) {
       setError(err.message || 'Не удалось удалить комментарий');
     }
+  }
+
+  function renderComment(comment, postId, depth = 0) {
+    return (
+      <div
+        className={'feed-comment' + (depth > 0 ? ' feed-comment-nested' : '')}
+        id={'feed-comment-' + comment.id}
+        key={comment.id}
+      >
+        <Avatar author={comment.author} />
+        <div className="feed-comment-body">
+          <div className="feed-comment-meta">
+            <Link to={comment.authorId === user?.id ? '/profile' : '/profile?user=' + encodeURIComponent(comment.author.username)}>
+              {comment.author.username}
+            </Link>
+            <time>{formatDate(comment.createdAt)}</time>
+          </div>
+          <p>{renderCommentText(comment.content)}</p>
+          <div className="feed-comment-actions">
+            <button type="button" onClick={() => setReplyingTo(comment.id)}>Ответить</button>
+            {comment.authorId === user?.id && (
+              <button type="button" className="feed-comment-delete" onClick={() => removeComment(postId, comment.id)} title="Удалить комментарий">
+                <Trash2 size={13} /> Удалить
+              </button>
+            )}
+          </div>
+          {replyingTo === comment.id && (
+            <form className="feed-comment-form feed-comment-reply-form" onSubmit={event => submitComment(event, postId, comment.id)}>
+              <input
+                autoFocus
+                value={replyDrafts[comment.id] || ''}
+                onChange={event => setReplyDrafts(current => ({ ...current, [comment.id]: event.target.value }))}
+                maxLength={500}
+                placeholder={'Ответить @' + comment.author.username + '...'}
+              />
+              <button type="submit" disabled={!(replyDrafts[comment.id] || '').trim() || commentBusy[postId]}><Send size={14} /></button>
+              <button type="button" className="feed-reply-cancel" onClick={() => setReplyingTo(null)}>Отмена</button>
+            </form>
+          )}
+          {comment.replies?.length > 0 && (
+            <div className="feed-comment-replies">
+              {comment.replies.map(reply => renderComment(reply, postId, depth + 1))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return <main className="page-content feed-page">
@@ -482,15 +551,19 @@ export default function ActivityFeed() {
         )}
         </>}
         {expandedComments[post.id] && <section className="feed-comments">
-          {(comments[post.id] || []).map(comment => <div className="feed-comment" key={comment.id}>
-            <Avatar author={comment.author} />
-            <div className="feed-comment-body"><div><Link to={comment.authorId === user?.id ? '/profile' : `/profile?user=${encodeURIComponent(comment.author.username)}`}>{comment.author.username}</Link><time>{formatDate(comment.createdAt)}</time></div><p>{comment.content}</p></div>
-            {comment.authorId === user?.id && <button className="feed-comment-delete" onClick={() => removeComment(post.id, comment.id)} title="Удалить комментарий"><Trash2 size={14} /></button>}
-          </div>)}
+          <div className="feed-comment-thread">
+            {buildCommentTree(comments[post.id] || []).map(comment => renderComment(comment, post.id))}
+          </div>
           <form className="feed-comment-form" onSubmit={event => submitComment(event, post.id)}>
-            <input value={commentDrafts[post.id] || ''} onChange={event => setCommentDrafts(current => ({ ...current, [post.id]: event.target.value }))} maxLength={500} placeholder="Написать комментарий..." />
+            <input
+              value={commentDrafts[post.id] || ''}
+              onChange={event => setCommentDrafts(current => ({ ...current, [post.id]: event.target.value }))}
+              maxLength={500}
+              placeholder="Написать комментарий... Используй @username для упоминания"
+            />
             <button type="submit" disabled={!(commentDrafts[post.id] || '').trim() || commentBusy[post.id]}><Send size={15} /></button>
           </form>
+          <div className="feed-comment-hint">Ответы можно оставлять прямо под нужным комментарием. Упоминания: @username</div>
         </section>}
       </article>)}
     </div>}
