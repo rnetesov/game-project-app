@@ -165,6 +165,7 @@ model Game {
   id          String     @id @default(cuid())
   slug        String     @unique
   title       String     @unique
+  description String     @default("")
   genre       String
   subGenre    String?
   platforms   String     @default("PC")

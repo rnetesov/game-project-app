@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
+import { removeGameCoverFile } from '../middleware/game-cover-upload.middleware.js';
 
 const STATUSES = ['PLAYING', 'WANT_TO_PLAY', 'COMPLETED'];
 const GENRES = ['RPG', 'Action', 'Shooter', 'Racing', 'Roguelike', 'Metroidvania', 'Simulator', 'Puzzle', 'Sandbox', 'Adventure', 'Horror'];
@@ -7,6 +8,7 @@ const gameSelect = {
   id: true,
   slug: true,
   title: true,
+  description: true,
   genre: true,
   subGenre: true,
   platforms: true,
@@ -70,14 +72,21 @@ function createGameSlug(title) {
 }
 
 export async function addGameToCatalog(req, res, next) {
+  const coverFile = req.file || null;
   const parsed = z.object({
     title: z.string().trim().min(2, 'Название должно содержать минимум 2 символа').max(80),
+    description: z.string().trim().min(10, 'Добавь короткое описание игры').max(400, 'Описание должно быть не длиннее 400 символов'),
     genre: z.enum(GENRES),
     subGenre: z.string().trim().max(40).optional().default(''),
     platforms: z.string().trim().min(2, 'Укажи хотя бы одну платформу').max(120),
-    releaseYear: z.number().int().min(1970).max(new Date().getFullYear() + 2).nullable().optional(),
-  }).strict().safeParse(req.body);
+    releaseYear: z.preprocess(
+      value => value === '' || value == null ? null : Number(value),
+      z.number().int().min(1970).max(new Date().getFullYear() + 2).nullable()
+    ),
+  }).strict().safeParse(req.body || {});
+
   if (!parsed.success) {
+    await removeGameCoverFile(coverFile);
     return res.status(400).json({
       success: false,
       message: parsed.error.issues[0]?.message || 'Проверь данные игры',
@@ -91,6 +100,7 @@ export async function addGameToCatalog(req, res, next) {
       select: { id: true, title: true },
     });
     if (duplicate) {
+      await removeGameCoverFile(coverFile);
       return res.status(409).json({
         success: false,
         message: 'Такая игра уже есть в общем каталоге: ' + duplicate.title,
@@ -104,6 +114,7 @@ export async function addGameToCatalog(req, res, next) {
       },
     });
     if (recentSubmissions >= 10) {
+      await removeGameCoverFile(coverFile);
       return res.status(429).json({
         success: false,
         message: 'Можно добавлять не более 10 игр в каталог за 24 часа',
@@ -114,16 +125,19 @@ export async function addGameToCatalog(req, res, next) {
       data: {
         slug,
         title: parsed.data.title,
+        description: parsed.data.description,
         genre: parsed.data.genre,
         subGenre: parsed.data.subGenre || null,
         platforms: parsed.data.platforms,
-        releaseYear: parsed.data.releaseYear ?? null,
+        releaseYear: parsed.data.releaseYear,
+        coverUrl: coverFile?.url || null,
         createdById: req.user.id,
       },
       select: gameSelect,
     });
     res.status(201).json({ success: true, game: { ...game, libraryStatus: null } });
   } catch (error) {
+    await removeGameCoverFile(coverFile);
     if (error.code === 'P2002') {
       return res.status(409).json({ success: false, message: 'Похоже, такая игра уже есть в каталоге' });
     }

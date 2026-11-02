@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Camera, Check, Edit3, Gamepad2, MessageCircle, ShieldCheck, Trophy, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getProfile, getUserGameLibrary, updateMyProfile } from '../../services/api.js';
+import { getProfile, getUserGameLibrary, updateMyProfile, getAssetUrl } from '../../services/api.js';
 import '../Library/Library.css';
 
 function initials(name = '') {
@@ -128,9 +128,9 @@ export default function Profile() {
               <article className="profile-library-card" key={entry.id}>
                 <div className="profile-library-cover">
                   <div className="library-cover-fallback"><Gamepad2 size={24}/><span>{entry.game.title}</span></div>
-                  {entry.game.coverUrl && <img src={entry.game.coverUrl} alt={'Обложка ' + entry.game.title} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }}/>}
+                  {entry.game.coverUrl && <img src={getAssetUrl(entry.game.coverUrl)} alt={'Обложка ' + entry.game.title} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }}/>}
                 </div>
-                <div><strong>{entry.game.title}</strong><small className="profile-library-genre">{entry.game.genre}{entry.game.subGenre ? ' · ' + entry.game.subGenre : ''}</small><span className={'library-status-label status-' + entry.status.toLowerCase()}>{({ PLAYING: 'Играю сейчас', WANT_TO_PLAY: 'Хочу пройти', COMPLETED: 'Пройдено' })[entry.status]}</span></div>
+                <div><strong>{entry.game.title}</strong><small className="profile-library-genre">{entry.game.genre}{entry.game.subGenre ? ' · ' + entry.game.subGenre : ''}</small><small className="profile-library-description">{entry.game.description}</small><span className={'library-status-label status-' + entry.status.toLowerCase()}>{({ PLAYING: 'Играю сейчас', WANT_TO_PLAY: 'Хочу пройти', COMPLETED: 'Пройдено' })[entry.status]}</span></div>
               </article>
             ))}
           </div>
