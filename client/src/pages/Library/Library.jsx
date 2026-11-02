@@ -131,6 +131,7 @@ export default function LibraryPage() {
   const isOwnLibrary = viewedUsername === user?.username;
   const [activeTab, setActiveTab] = useState('library');
   const [activeStatus, setActiveStatus] = useState('ALL');
+  const [activeGenre, setActiveGenre] = useState('ALL');
   const [entries, setEntries] = useState([]);
   const [counts, setCounts] = useState({ total: 0, PLAYING: 0, WANT_TO_PLAY: 0, COMPLETED: 0 });
   const [games, setGames] = useState([]);
@@ -140,6 +141,10 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true);
   const [busyGames, setBusyGames] = useState({});
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showAddGame, setShowAddGame] = useState(false);
+  const [submittingGame, setSubmittingGame] = useState(false);
+  const [gameDraft, setGameDraft] = useState({ title: '', genre: 'RPG', subGenre: '', platforms: 'PC', releaseYear: '' });
 
   const refreshLibrary = useCallback(async () => {
     const result = await getUserGameLibrary(viewedUsername);
@@ -154,7 +159,7 @@ export default function LibraryPage() {
     setError('');
     Promise.all([
       getUserGameLibrary(viewedUsername),
-      isOwnLibrary ? getGames('') : Promise.resolve({ games: [] }),
+      isOwnLibrary ? getGames('', '') : Promise.resolve({ games: [] }),
     ]).then(([library, catalog]) => {
       if (cancelled) return;
       setProfileUser(library.user);
@@ -170,8 +175,9 @@ export default function LibraryPage() {
   }, [viewedUsername, isOwnLibrary]);
 
   const visibleEntries = useMemo(() => entries.filter(entry =>
-    activeStatus === 'ALL' || entry.status === activeStatus
-  ), [entries, activeStatus]);
+    (activeStatus === 'ALL' || entry.status === activeStatus)
+    && (activeGenre === 'ALL' || entry.game.genre === activeGenre)
+  ), [entries, activeStatus, activeGenre]);
 
   const submitSearch = async event => {
     event.preventDefault();
@@ -179,7 +185,7 @@ export default function LibraryPage() {
     setLoading(true);
     setError('');
     try {
-      const result = await getGames(searchInput.trim());
+      const result = await getGames(searchInput.trim(), activeGenre === 'ALL' ? '' : activeGenre);
       setGames(result.games || []);
     } catch (err) {
       setError(err.message || 'Не удалось выполнить поиск');
@@ -193,7 +199,7 @@ export default function LibraryPage() {
     setSearchQuery('');
     setLoading(true);
     try {
-      const result = await getGames('');
+      const result = await getGames('', activeGenre === 'ALL' ? '' : activeGenre);
       setGames(result.games || []);
     } catch (err) {
       setError(err.message || 'Не удалось загрузить каталог');
@@ -201,6 +207,49 @@ export default function LibraryPage() {
       setLoading(false);
     }
   };
+
+  async function changeCatalogGenre(genre) {
+    setActiveGenre(genre);
+    setLoading(true);
+    setError('');
+    try {
+      const result = await getGames(searchQuery, genre === 'ALL' ? '' : genre);
+      setGames(result.games || []);
+    } catch (err) {
+      setError(err.message || 'Не удалось отфильтровать каталог');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitNewGame(event) {
+    event.preventDefault();
+    if (submittingGame) return;
+    setSubmittingGame(true);
+    setError('');
+    setSuccess('');
+    try {
+      const result = await addGameToCatalog({
+        title: gameDraft.title.trim(),
+        genre: gameDraft.genre,
+        subGenre: gameDraft.subGenre.trim(),
+        platforms: gameDraft.platforms.trim(),
+        releaseYear: gameDraft.releaseYear ? Number(gameDraft.releaseYear) : null,
+      });
+      setGameDraft({ title: '', genre: 'RPG', subGenre: '', platforms: 'PC', releaseYear: '' });
+      setShowAddGame(false);
+      setActiveGenre(result.game.genre);
+      setSearchInput('');
+      setSearchQuery('');
+      const catalog = await getGames('', result.game.genre);
+      setGames(catalog.games || []);
+      setSuccess('Игра добавлена в общий каталог и теперь доступна всем участникам GameHub.');
+    } catch (err) {
+      setError(err.message || 'Не удалось добавить игру в каталог');
+    } finally {
+      setSubmittingGame(false);
+    }
+  }
 
   async function changeStatus(gameId, status) {
     if (!status) return;
@@ -261,6 +310,7 @@ export default function LibraryPage() {
       </section>
 
       {error && <div className="library-error">{error}</div>}
+      {success && <div className="library-success">{success}</div>}
 
       {isOwnLibrary && (
         <div className="library-main-tabs" role="tablist" aria-label="Раздел библиотеки">
