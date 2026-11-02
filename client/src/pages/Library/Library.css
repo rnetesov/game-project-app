@@ -125,3 +125,22 @@
 @media(max-width:700px){.library-genre-filters{gap:5px;padding:8px}.library-genre-filters button{padding:7px 8px;font-size:8px}.library-catalog-heading-actions{align-items:flex-end;flex-direction:column;gap:6px}.library-add-game-fields{grid-template-columns:1fr}.library-add-game-footer{align-items:stretch;flex-direction:column}.library-add-game-footer .primary-button{width:100%}}
 
 .profile-library-genre{width:100%;overflow:hidden;color:#8b86e8;font-size:8px;text-overflow:ellipsis;white-space:nowrap}
+
+
+/* Game descriptions and uploaded cover previews */
+.library-game-description{display:-webkit-box;overflow:hidden;margin:7px 0 8px;color:#777b8d;font-size:9px;line-height:1.55;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.library-game-platforms{margin-top:5px}
+.library-add-game-fields input[type=file]{height:auto;min-height:36px;padding:7px;background:#fff;font-size:9px}
+.library-game-description-field{display:grid;gap:6px;color:#777a8c;font-size:9px;font-weight:700}
+.library-game-description-field textarea{width:100%;min-height:76px;padding:10px;border:1px solid #e9eaf1;border-radius:8px;outline:0;resize:vertical;background:#fff;color:#45475b;font:inherit;font-size:10px;font-weight:400;line-height:1.5}
+.library-game-description-field textarea:focus{border-color:#918bed;box-shadow:0 0 0 3px #7771e817}
+.library-field-counter{color:#a1a3b2;font-size:8px;font-weight:400}
+.library-cover-preview{display:flex;align-items:center;gap:10px;padding:9px;border:1px solid #e9e7fb;border-radius:9px;background:#fff}
+.library-cover-preview>img{width:112px;height:64px;flex:none;object-fit:cover;border-radius:6px;background:#f1f0f8}
+.library-cover-preview>div{min-width:0;flex:1}
+.library-cover-preview strong,.library-cover-preview span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.library-cover-preview strong{color:#55586b;font-size:9px}
+.library-cover-preview span{margin-top:4px;color:#a1a3b2;font-size:8px}
+.library-cover-preview>button{width:28px;height:28px;display:grid;place-items:center;border-radius:7px;background:#fff1f0;color:#c66c67}
+.library-cover-preview>button:hover{background:#ffe5e3}
+@media(max-width:700px){.library-cover-preview>img{width:88px;height:54px}}
