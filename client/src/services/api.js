@@ -85,8 +85,10 @@ export function getPostReactions(id) {
 export function getPostComments(id) {
   return request('/posts/' + encodeURIComponent(id) + '/comments', { token: authToken() });
 }
-export function createPostComment(id, content) {
-  return request('/posts/' + encodeURIComponent(id) + '/comments', { method: 'POST', token: authToken(), body: JSON.stringify({ content }) });
+export function createPostComment(id, content, parentId = null) {
+  return request('/posts/' + encodeURIComponent(id) + '/comments', {
+    method: 'POST', token: authToken(), body: JSON.stringify({ content, parentId }),
+  });
 }
 export function deletePostComment(postId, commentId) {
   return request('/posts/' + encodeURIComponent(postId) + '/comments/' + encodeURIComponent(commentId), { method: 'DELETE', token: authToken() });
