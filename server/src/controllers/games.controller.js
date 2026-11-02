@@ -2,35 +2,44 @@ import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
 
 const STATUSES = ['PLAYING', 'WANT_TO_PLAY', 'COMPLETED'];
+const GENRES = ['RPG', 'Action', 'Shooter', 'Racing', 'Roguelike', 'Metroidvania', 'Simulator', 'Puzzle', 'Sandbox', 'Adventure', 'Horror'];
 const gameSelect = {
   id: true,
   slug: true,
   title: true,
   genre: true,
+  subGenre: true,
   platforms: true,
   releaseYear: true,
   coverUrl: true,
+  createdBy: { select: { username: true } },
 };
 
 export async function listGames(req, res, next) {
   const parsed = z.object({
     q: z.string().trim().max(100).default(''),
+    genre: z.enum(GENRES).optional(),
   }).safeParse(req.query);
   if (!parsed.success) {
-    return res.status(400).json({ success: false, message: 'Некорректный поисковый запрос' });
+    return res.status(400).json({ success: false, message: 'Некорректные параметры каталога' });
   }
 
   try {
-    const q = parsed.data.q;
-    const games = await prisma.game.findMany({
-      where: q ? {
+    const { q, genre } = parsed.data;
+    const where = {
+      ...(genre ? { genre } : {}),
+      ...(q ? {
         OR: [
           { title: { contains: q } },
           { genre: { contains: q } },
+          { subGenre: { contains: q } },
         ],
-      } : undefined,
-      orderBy: { title: 'asc' },
-      take: 60,
+      } : {}),
+    };
+    const games = await prisma.game.findMany({
+      where,
+      orderBy: [{ genre: 'asc' }, { title: 'asc' }],
+      take: 200,
       select: {
         ...gameSelect,
         userGames: {
@@ -49,6 +58,77 @@ export async function listGames(req, res, next) {
       })),
     });
   } catch (error) { next(error); }
+}
+
+function createGameSlug(title) {
+  const slug = title
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-|-$/g, '');
+  return slug || 'game-' + Date.now();
+}
+
+export async function addGameToCatalog(req, res, next) {
+  const parsed = z.object({
+    title: z.string().trim().min(2, 'Название должно содержать минимум 2 символа').max(80),
+    genre: z.enum(GENRES),
+    subGenre: z.string().trim().max(40).optional().default(''),
+    platforms: z.string().trim().min(2, 'Укажи хотя бы одну платформу').max(120),
+    releaseYear: z.number().int().min(1970).max(new Date().getFullYear() + 2).nullable().optional(),
+  }).strict().safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      message: parsed.error.issues[0]?.message || 'Проверь данные игры',
+    });
+  }
+
+  try {
+    const slug = createGameSlug(parsed.data.title);
+    const duplicate = await prisma.game.findFirst({
+      where: { OR: [{ slug }, { title: parsed.data.title }] },
+      select: { id: true, title: true },
+    });
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: 'Такая игра уже есть в общем каталоге: ' + duplicate.title,
+      });
+    }
+
+    const recentSubmissions = await prisma.game.count({
+      where: {
+        createdById: req.user.id,
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    });
+    if (recentSubmissions >= 10) {
+      return res.status(429).json({
+        success: false,
+        message: 'Можно добавлять не более 10 игр в каталог за 24 часа',
+      });
+    }
+
+    const game = await prisma.game.create({
+      data: {
+        slug,
+        title: parsed.data.title,
+        genre: parsed.data.genre,
+        subGenre: parsed.data.subGenre || null,
+        platforms: parsed.data.platforms,
+        releaseYear: parsed.data.releaseYear ?? null,
+        createdById: req.user.id,
+      },
+      select: gameSelect,
+    });
+    res.status(201).json({ success: true, game: { ...game, libraryStatus: null } });
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ success: false, message: 'Похоже, такая игра уже есть в каталоге' });
+    }
+    next(error);
+  }
 }
 
 export async function getUserLibrary(req, res, next) {

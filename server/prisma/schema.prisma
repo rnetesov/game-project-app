@@ -26,6 +26,7 @@ model User {
   conversationMemberships ConversationMember[]
   sentMessages          Message[]
   games                 UserGame[]
+  submittedGames        Game[] @relation("GameSubmitter")
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   @@index([createdAt])
@@ -165,13 +166,17 @@ model Game {
   slug        String     @unique
   title       String     @unique
   genre       String
+  subGenre    String?
   platforms   String     @default("PC")
   releaseYear Int?
   coverUrl    String?
+  createdById String?
   createdAt   DateTime   @default(now())
+  createdBy   User?      @relation("GameSubmitter", fields: [createdById], references: [id], onDelete: SetNull)
   userGames   UserGame[]
   @@index([title])
   @@index([genre])
+  @@index([createdById])
 }
 
 model UserGame {
