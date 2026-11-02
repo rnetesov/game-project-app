@@ -9,6 +9,8 @@ import {
   getPostComments, createPostComment, deletePostComment, getAssetUrl,
 } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import RichTextEditor from './RichTextEditor.jsx';
+import { renderPostContent } from './richContent.jsx';
 import './ActivityFeed.css';
 
 const MAX_POST_IMAGES = 4;
@@ -29,6 +31,7 @@ export default function ActivityFeed() {
   const [posts, setPosts] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [content, setContent] = useState('');
+  const [contentTextLength, setContentTextLength] = useState(0);
   const [attachments, setAttachments] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [lightboxImage, setLightboxImage] = useState('');
@@ -41,6 +44,7 @@ export default function ActivityFeed() {
   const [commentDrafts, setCommentDrafts] = useState({});
   const [commentBusy, setCommentBusy] = useState({});
   const fileInputRef = useRef(null);
+  const editorRef = useRef(null);
   const attachmentRef = useRef([]);
 
   const syncAttachments = (next) => {
@@ -126,14 +130,9 @@ export default function ActivityFeed() {
 
   useEffect(() => { load(); }, [load]);
 
-  function handlePaste(event) {
-    const pastedImages = Array.from(event.clipboardData?.items || [])
-      .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
-      .map(item => item.getAsFile())
-      .filter(Boolean);
-    if (!pastedImages.length) return;
-    event.preventDefault();
-    addImages(pastedImages);
+  function handleEditorChange(nextContent, nextTextLength) {
+    setContent(nextContent);
+    setContentTextLength(nextTextLength);
   }
 
   function handleDrop(event) {
@@ -144,13 +143,15 @@ export default function ActivityFeed() {
 
   async function submitPost(event) {
     event.preventDefault();
-    if ((!content.trim() && !attachments.length) || posting) return;
+    if ((!content.trim() && !attachments.length) || contentTextLength > 1000 || posting) return;
     setPosting(true);
     setError('');
     try {
       const data = await createPost(content, attachments.map(item => item.file));
       setPosts(current => [data.post, ...current]);
       setContent('');
+      setContentTextLength(0);
+      if (editorRef.current) editorRef.current.innerHTML = '';
       clearAttachments();
     } catch (err) {
       setError(err.message || 'Не удалось опубликовать запись');
@@ -246,13 +247,11 @@ export default function ActivityFeed() {
         <div className="composer-avatar">{user?.username?.[0]?.toUpperCase() || 'G'}</div>
         <div><strong>Поделись с сообществом</strong><span>Что нового в твоём игровом мире?</span></div>
       </div>
-      <textarea
-        value={content}
-        onChange={event => setContent(event.target.value)}
-        onPaste={handlePaste}
-        maxLength={1000}
-        placeholder="Напиши что-нибудь... Вставь скриншот через Ctrl+V"
-        rows={4}
+      <RichTextEditor
+        editorRef={editorRef}
+        onChange={handleEditorChange}
+        onImagePaste={addImages}
+        textLength={contentTextLength}
       />
       {attachments.length > 0 && <div className="feed-attachment-area">
         <div className="feed-attachment-heading"><span>Вложения</span><small>{attachments.length} из {MAX_POST_IMAGES}</small></div>
@@ -283,8 +282,8 @@ export default function ActivityFeed() {
           <span className="feed-editor-hint"><ClipboardPaste size={13} /> Ctrl+V или перетащи скриншот сюда</span>
         </div>
         <div className="composer-footer">
-          <span>{content.length}/1000</span>
-          <button className="primary-button" type="submit" disabled={(!content.trim() && !attachments.length) || posting}>
+          <span className={contentTextLength > 1000 ? 'over-limit' : ''}>{contentTextLength}/1000</span>
+          <button className="primary-button" type="submit" disabled={(!content.trim() && !attachments.length) || contentTextLength > 1000 || posting}>
             <Send size={15} />{posting ? 'Загружаем...' : 'Опубликовать'}
           </button>
         </div>
@@ -299,7 +298,7 @@ export default function ActivityFeed() {
         <div className="feed-post-head"><Avatar author={post.author} /><div className="feed-author"><Link to={post.authorId === user?.id ? '/profile' : `/profile?user=${encodeURIComponent(post.author.username)}`}>{post.author.username}</Link><time>{formatDate(post.createdAt)}</time></div>
           {post.authorId === user?.id && <button className="feed-delete" onClick={() => removePost(post.id)} title="Удалить публикацию"><Trash2 size={16} /></button>}
         </div>
-        {post.content && <p className="feed-post-content">{post.content}</p>}
+        {post.content && renderPostContent(post.content)}
         {post.images?.length > 0 && <div className={'feed-post-gallery count-' + Math.min(post.images.length, 4)}>
           {post.images.map((image, index) => <button type="button" className="feed-post-image" key={image.id} onClick={() => setLightboxImage(getAssetUrl(image.url))} aria-label="Открыть изображение">
             <img src={getAssetUrl(image.url)} alt={'Изображение публикации ' + (index + 1)} loading="lazy" />
