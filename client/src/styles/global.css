@@ -96,3 +96,8 @@
 @keyframes notificationToastProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 @media(max-width:600px){.notification-toast-stack{top:68px;right:10px;width:calc(100vw - 20px)}.notification-toast-main{padding:13px 34px 15px 11px}.notification-toast-avatar{width:31px;height:31px}.notification-toast-icon{width:35px;height:35px}}
 @media(prefers-reduced-motion:reduce){.notification-toast,.notification-toast-progress,.notification-trigger.has-unread svg{animation:none}}
+
+
+/* Direct message notifications */
+.icon-message{background:#f0efff;color:#716be0}
+.toast-message .notification-toast-icon{background:#f0efff;color:#716be0}
