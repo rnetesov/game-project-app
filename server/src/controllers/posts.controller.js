@@ -59,6 +59,7 @@ const postSelect = {
   updatedAt: true,
   author: { select: { id: true, username: true, avatarUrl: true } },
   images: { select: { id: true, url: true, createdAt: true }, orderBy: { createdAt: 'asc' } },
+  reactions: { select: { type: true, userId: true, user: { select: { id: true, username: true, avatarUrl: true } } } },
   _count: { select: { likes: true, comments: true } },
 };
 
@@ -75,11 +76,16 @@ export async function listPosts(req, res, next) {
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      select: { ...postSelect, likes: { where: { userId: req.user.id }, select: { id: true } } },
+      select: postSelect,
     });
     const hasMore = rows.length > limit;
-    const posts = (hasMore ? rows.slice(0, limit) : rows).map(({ likes, ...post }) => ({
-      ...post, likedByMe: likes.length > 0,
+    const posts = (hasMore ? rows.slice(0, limit) : rows).map(post => ({
+      ...post,
+      myReaction: post.reactions.find(reaction => reaction.userId === req.user.id)?.type || null,
+      reactionCounts: post.reactions.reduce((counts, reaction) => {
+        counts[reaction.type] = (counts[reaction.type] || 0) + 1;
+        return counts;
+      }, {}),
     }));
     res.json({ success: true, posts, nextCursor: hasMore ? posts[posts.length - 1].id : null });
   } catch (error) { next(error); }
@@ -230,21 +236,49 @@ export async function deletePost(req, res, next) {
   } catch (error) { next(error); }
 }
 
-export async function togglePostLike(req, res, next) {
+const REACTION_TYPES = new Set(['FIRE', 'HEART', 'LAUGH', 'WOW', 'SAD']);
+
+export async function togglePostReaction(req, res, next) {
+  const parsed = z.object({ type: z.enum(['FIRE', 'HEART', 'LAUGH', 'WOW', 'SAD']) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ success: false, message: 'Неизвестный тип реакции' });
   try {
     const post = await prisma.post.findUnique({ where: { id: req.params.id }, select: { id: true, authorId: true } });
     if (!post) return res.status(404).json({ success: false, message: 'Публикация не найдена' });
     const where = { postId_userId: { postId: post.id, userId: req.user.id } };
-    const existing = await prisma.postLike.findUnique({ where });
-    if (existing) {
-      await prisma.postLike.delete({ where });
-      const count = await prisma.postLike.count({ where: { postId: post.id } });
-      return res.json({ success: true, liked: false, count });
+    const existing = await prisma.postReaction.findUnique({ where });
+    let myReaction = parsed.data.type;
+    if (existing?.type === parsed.data.type) {
+      await prisma.postReaction.delete({ where });
+      myReaction = null;
+    } else {
+      await prisma.postReaction.upsert({
+        where,
+        create: { postId: post.id, userId: req.user.id, type: parsed.data.type },
+        update: { type: parsed.data.type },
+      });
+      if (post.authorId !== req.user.id) {
+        await createNotification({ type: 'REACTION', recipientId: post.authorId, actorId: req.user.id, postId: post.id });
+      }
     }
-    await prisma.postLike.create({ data: { postId: post.id, userId: req.user.id } });
-    await createNotification({ type: 'LIKE', recipientId: post.authorId, actorId: req.user.id, postId: post.id });
-    const count = await prisma.postLike.count({ where: { postId: post.id } });
-    res.json({ success: true, liked: true, count });
+    const reactions = await prisma.postReaction.findMany({ where: { postId: post.id }, select: { type: true } });
+    const reactionCounts = reactions.reduce((counts, reaction) => {
+      counts[reaction.type] = (counts[reaction.type] || 0) + 1;
+      return counts;
+    }, {});
+    res.json({ success: true, myReaction, reactionCounts });
+  } catch (error) { next(error); }
+}
+
+export async function listPostReactions(req, res, next) {
+  try {
+    const post = await prisma.post.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    if (!post) return res.status(404).json({ success: false, message: 'Публикация не найдена' });
+    const reactions = await prisma.postReaction.findMany({
+      where: { postId: post.id },
+      orderBy: { createdAt: 'desc' },
+      select: { type: true, createdAt: true, user: { select: { id: true, username: true, avatarUrl: true } } },
+    });
+    res.json({ success: true, reactions });
   } catch (error) { next(error); }
 }
 
