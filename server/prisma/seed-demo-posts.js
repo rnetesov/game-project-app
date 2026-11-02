@@ -251,11 +251,9 @@ async function main() {
   console.log('Создаём публикации...');
   const posts = await seedPosts(usersByName);
   console.log('Добавляем комментарии, лайки и связи...');
-  const [commentsCreated, likesCreated, friendsCreated] = await Promise.all([
-    seedComments(posts, usersByName),
-    seedLikes(posts, usersByName),
-    seedFriendRequests(usersByName)
-  ]);
+  const commentsCreated = await seedComments(posts, usersByName);
+  const likesCreated = await seedLikes(posts, usersByName);
+  const friendsCreated = await seedFriendRequests(usersByName);
 
   console.log('\nДемо-данные GameHub готовы:');
   console.log('Пользователей: ' + usersByName.size);
