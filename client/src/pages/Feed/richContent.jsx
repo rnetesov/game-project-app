@@ -69,7 +69,7 @@ function serializeBlock(node) {
   const level = /^h[1-4]$/.test(tag) ? Number(tag.slice(1)) : 0;
   const children = compactInline(Array.from(node.childNodes)
     .flatMap(child => serializeInlineNode(child)));
-  if (!children.length) return null;
+  if (!children.length || children.every(child => child.type === 'break')) return null;
   return level
     ? { type: 'heading', level: Math.min(level, 3), children }
     : { type: 'paragraph', children };
