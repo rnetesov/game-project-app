@@ -49,6 +49,18 @@ export function createPost(content, images = []) {
   return request('/posts', { method: 'POST', token: authToken(), body: formData });
 }
 
+export function updatePost(id, content, images = [], keepImageIds = []) {
+  const formData = new FormData();
+  formData.append('content', content);
+  formData.append('keepImageIds', JSON.stringify(keepImageIds));
+  images.forEach(image => formData.append('images', image, image.name || 'screenshot.png'));
+  return request('/posts/' + encodeURIComponent(id), {
+    method: 'PATCH',
+    token: authToken(),
+    body: formData,
+  });
+}
+
 export function getAssetUrl(path) {
   if (!path) return '';
   if (/^https?:\/\//i.test(path)) return path;
