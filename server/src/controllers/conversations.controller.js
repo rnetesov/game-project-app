@@ -84,20 +84,7 @@ export async function openConversation(req, res, next) {
       return res.status(404).json({ success: false, message: 'Пользователь не найден' });
     }
 
-    const friendship = await prisma.friendRequest.findFirst({
-      where: {
-        status: 'ACCEPTED',
-        OR: [
-          { senderId: req.user.id, receiverId: otherUserId },
-          { senderId: otherUserId, receiverId: req.user.id },
-        ],
-      },
-      select: { id: true },
-    });
-    if (!friendship) {
-      return res.status(403).json({ success: false, message: 'Личные сообщения доступны только друзьям' });
-    }
-
+    // Any registered user can receive a new direct message; friendship is not required.
     const directKey = [req.user.id, otherUserId].sort().join(':');
     let conversation = await prisma.conversation.findUnique({
       where: { directKey },
