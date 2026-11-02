@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MessageCircle, Plus, Send, Users, ArrowDown, LoaderCircle, Search } from 'lucide-react';
+import { MessageCircle, Plus, Send, Users, ArrowDown, LoaderCircle, Search, Check, CheckCheck } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
@@ -364,7 +364,19 @@ export default function Messages() {
                     <div className="messages-bubble">
                       {!own && <Link className="messages-sender-profile" to={'/profile?user=' + encodeURIComponent(message.sender?.username || '')}>{message.sender?.username}</Link>}
                       <p>{message.content}</p>
-                      <time>{formatTime(message.createdAt)}</time>
+                      <div className="messages-bubble-footer">
+                        <time>{formatTime(message.createdAt)}</time>
+                        {own && (
+                          <span
+                            className={'messages-read-receipt' + (message.readAt ? ' is-read' : '')}
+                            title={message.readAt ? 'Прочитано собеседником' : 'Отправлено, ожидает прочтения'}
+                            aria-label={message.readAt ? 'Прочитано' : 'Отправлено'}
+                          >
+                            {message.readAt ? <CheckCheck size={13} /> : <Check size={13} />}
+                            <span>{message.readAt ? 'Прочитано' : 'Отправлено'}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </article>;
                 }) : <div className="messages-start-hint"><MessageCircle size={25}/><strong>Начало переписки</strong><span>Отправь первое сообщение.</span></div>}

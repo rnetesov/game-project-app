@@ -169,3 +169,12 @@
 .messages-sender-profile{display:block;width:fit-content;margin-bottom:5px;color:#7771e8;font-size:9px;font-weight:800;text-decoration:none}
 @media(max-width:850px){.messages-conversation-profile{flex-basis:45%}.messages-conversation-profile .messages-avatar{width:34px;height:34px}}
 @media(max-width:650px){.messages-conversation-profile{flex-basis:42%}.messages-conversation-profile .messages-avatar{width:34px;height:34px}}
+
+
+/* Read receipts for outgoing direct messages */
+.messages-bubble-footer{display:flex;align-items:center;justify-content:flex-end;gap:9px;margin-top:6px}
+.messages-bubble-footer time{display:block;margin:0;color:#a4a6b4;font-size:8px;text-align:right}
+.messages-read-receipt{display:inline-flex;align-items:center;gap:3px;color:#a4a6b4;font-size:8px;white-space:nowrap}
+.messages-read-receipt svg{flex:none}
+.messages-read-receipt.is-read{color:#7771e8}
+.messages-read-receipt.is-read svg{color:#6b65dc}

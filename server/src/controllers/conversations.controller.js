@@ -148,6 +148,11 @@ export async function listMessages(req, res, next) {
       }
     }
 
+    const recipientMembership = await prisma.conversationMember.findFirst({
+      where: { conversationId: req.params.id, userId: { not: req.user.id } },
+      select: { lastReadAt: true },
+    });
+
     const rows = await prisma.message.findMany({
       where: { conversationId: req.params.id },
       ...(parsed.data.before ? { cursor: { id: parsed.data.before }, skip: 1 } : {}),
@@ -163,7 +168,15 @@ export async function listMessages(req, res, next) {
     });
     const hasMore = rows.length > parsed.data.limit;
     const page = hasMore ? rows.slice(0, parsed.data.limit) : rows;
-    const messages = page.reverse();
+    const recipientLastReadAt = recipientMembership?.lastReadAt || null;
+    const messages = page.reverse().map(message => ({
+      ...message,
+      readAt: message.senderId === req.user.id
+        && recipientLastReadAt
+        && recipientLastReadAt.getTime() >= message.createdAt.getTime()
+        ? recipientLastReadAt
+        : null,
+    }));
 
     res.json({
       success: true,
