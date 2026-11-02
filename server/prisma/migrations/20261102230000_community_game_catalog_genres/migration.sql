@@ -1,0 +1,22 @@
+ALTER TABLE "Game" ADD COLUMN "subGenre" TEXT;
+ALTER TABLE "Game" ADD COLUMN "createdById" TEXT REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+CREATE INDEX "Game_createdById_idx" ON "Game"("createdById");
+
+UPDATE "Game" SET "genre"='RPG', "subGenre"='Open world' WHERE "slug" IN ('cyberpunk-2077','the-witcher-3','the-elder-scrolls-v-skyrim');
+UPDATE "Game" SET "genre"='Action', "subGenre"='Open world' WHERE "slug" IN ('red-dead-redemption-2','grand-theft-auto-v');
+UPDATE "Game" SET "genre"='RPG', "subGenre"='Soulslike' WHERE "slug"='elden-ring';
+UPDATE "Game" SET "genre"='RPG', "subGenre"='Turn-based' WHERE "slug"='baldurs-gate-3';
+UPDATE "Game" SET "genre"='Shooter', "subGenre"='FPS' WHERE "slug" IN ('doom-eternal','metro-exodus');
+UPDATE "Game" SET "genre"='Racing', "subGenre"='Open world' WHERE "slug"='forza-horizon-5';
+UPDATE "Game" SET "genre"='Roguelike', "subGenre"='Action' WHERE "slug"='hades';
+UPDATE "Game" SET "genre"='Metroidvania', "subGenre"='2D' WHERE "slug"='hollow-knight';
+UPDATE "Game" SET "genre"='Simulator', "subGenre"='Farming' WHERE "slug"='stardew-valley';
+UPDATE "Game" SET "genre"='Puzzle', "subGenre"='First-person' WHERE "slug"='portal-2';
+UPDATE "Game" SET "genre"='Sandbox', "subGenre"='Survival' WHERE "slug"='terraria';
+UPDATE "Game" SET "genre"='Adventure', "subGenre"='Survival' WHERE "slug"='no-mans-sky';
+UPDATE "Game" SET "genre"='Action', "subGenre"='Soulslike' WHERE "slug"='sekiro';
+UPDATE "Game" SET "genre"='Horror', "subGenre"='Survival action' WHERE "slug"='resident-evil-4';
+UPDATE "Game" SET "genre"='Shooter', "subGenre"='Competitive' WHERE "slug"='counter-strike-2';
+UPDATE "Game" SET "genre"='Shooter', "subGenre"='Co-op' WHERE "slug"='left-4-dead-2';
+UPDATE "Game" SET "genre"='Action', "subGenre"='Stealth' WHERE "slug"='dishonored-2';
+UPDATE "Game" SET "genre"='RPG', "subGenre"='Sci-fi' WHERE "slug"='mass-effect-legendary-edition';
