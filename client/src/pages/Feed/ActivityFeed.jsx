@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   MessageSquare, Send, Trash2, Newspaper, RefreshCw, Pencil,
   ImagePlus, X, ClipboardPaste,
 } from 'lucide-react';
 import {
-  createPost, deletePost, getPosts, togglePostReaction, getPostReactions,
+  createPost, deletePost, getPosts, getPost, togglePostReaction, getPostReactions,
   getPostComments, createPostComment, deletePostComment, getAssetUrl,
 } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -29,6 +29,9 @@ function Avatar({ author }) {
 
 export default function ActivityFeed() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const targetPostId = searchParams.get('post');
+  const requestedPostIdRef = useRef(null);
   const [posts, setPosts] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [content, setContent] = useState('');
@@ -132,6 +135,48 @@ export default function ActivityFeed() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!targetPostId) {
+      requestedPostIdRef.current = null;
+      return;
+    }
+    if (loading) return;
+
+    const existingPost = posts.find(post => post.id === targetPostId);
+    if (existingPost) {
+      const element = document.getElementById('feed-post-' + targetPostId);
+      if (!element) return;
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.add('is-notification-target');
+      window.setTimeout(() => element.classList.remove('is-notification-target'), 2600);
+      requestedPostIdRef.current = null;
+      setSearchParams(current => {
+        const next = new URLSearchParams(current);
+        next.delete('post');
+        return next;
+      }, { replace: true });
+      return;
+    }
+
+    if (requestedPostIdRef.current === targetPostId) return;
+    requestedPostIdRef.current = targetPostId;
+    getPost(targetPostId)
+      .then(data => {
+        setPosts(current => current.some(post => post.id === data.post.id)
+          ? current
+          : [data.post, ...current]);
+      })
+      .catch(err => {
+        setError(err.message || 'Не удалось открыть публикацию из уведомления');
+        requestedPostIdRef.current = null;
+        setSearchParams(current => {
+          const next = new URLSearchParams(current);
+          next.delete('post');
+          return next;
+        }, { replace: true });
+      });
+  }, [targetPostId, posts, loading, setSearchParams]);
 
   function handleEditorChange(nextContent, nextTextLength) {
     setContent(nextContent);
@@ -315,7 +360,7 @@ export default function ActivityFeed() {
     <div className="feed-list-heading"><div><h2>Последние публикации</h2><p>Общайся с другими игроками</p></div><button className="feed-refresh" onClick={() => load()} title="Обновить"><RefreshCw size={16} /></button></div>
     {error && <div className="feed-error">{error}</div>}
     {loading ? <div className="feed-state">Загружаем публикации...</div> : posts.length === 0 ? <div className="feed-empty"><MessageSquare size={28} /><strong>Пока здесь тихо</strong><span>Стань первым, кто поделится новостью!</span></div> : <div className="feed-posts">
-      {posts.map(post => <article className="feed-post" key={post.id}>
+      {posts.map(post => <article id={'feed-post-' + post.id} className="feed-post" key={post.id}>
         <div className="feed-post-head"><Avatar author={post.author} /><div className="feed-author"><Link to={post.authorId === user?.id ? '/profile' : `/profile?user=${encodeURIComponent(post.author.username)}`}>{post.author.username}</Link><time>{formatDate(post.createdAt)}{post.updatedAt && new Date(post.updatedAt) > new Date(post.createdAt) ? ' · изменено' : ''}</time></div>
           {post.authorId === user?.id && <>
             {editingPostId !== post.id && <button className="feed-edit-trigger" onClick={() => setEditingPostId(post.id)} title="Редактировать публикацию"><Pencil size={15} /></button>}

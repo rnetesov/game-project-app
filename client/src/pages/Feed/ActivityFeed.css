@@ -98,3 +98,9 @@
 .feed-reaction-person a{color:#55586b;font-size:10px;font-weight:700;text-decoration:none}
 .feed-reaction-person a:hover{color:#716be0}
 @media(max-width:700px){.feed-actions-expanded{align-items:flex-start;flex-direction:column}.feed-reaction-picker{gap:4px}.feed-reaction{padding:6px}}
+
+
+/* Highlight a post opened from a notification */
+.feed-post.is-notification-target{outline:2px solid #8b84ee;outline-offset:3px;animation:feed-notification-target 2.6s ease-out}
+@keyframes feed-notification-target{0%,35%{box-shadow:0 0 0 5px #7771e82b}100%{box-shadow:0 0 0 0 #7771e800}}
+@media(prefers-reduced-motion:reduce){.feed-post.is-notification-target{animation:none}}

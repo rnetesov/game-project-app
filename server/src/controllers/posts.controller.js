@@ -63,6 +63,27 @@ const postSelect = {
   _count: { select: { likes: true, comments: true } },
 };
 
+export async function getPost(req, res, next) {
+  try {
+    const post = await prisma.post.findUnique({
+      where: { id: req.params.id },
+      select: postSelect,
+    });
+    if (!post) return res.status(404).json({ success: false, message: 'Публикация не найдена' });
+    res.json({
+      success: true,
+      post: {
+        ...post,
+        myReaction: post.reactions.find(reaction => reaction.userId === req.user.id)?.type || null,
+        reactionCounts: post.reactions.reduce((counts, reaction) => {
+          counts[reaction.type] = (counts[reaction.type] || 0) + 1;
+          return counts;
+        }, {}),
+      },
+    });
+  } catch (error) { next(error); }
+}
+
 export async function listPosts(req, res, next) {
   const parsed = z.object({
     cursor: z.string().min(1).optional(),
@@ -253,6 +274,12 @@ export async function togglePostReaction(req, res, next) {
         where,
         create: { postId: post.id, userId: req.user.id, type: parsed.data.type },
         update: { type: parsed.data.type },
+      });
+      await createNotification({
+        type: 'REACTION_' + parsed.data.type,
+        recipientId: post.authorId,
+        actorId: req.user.id,
+        postId: post.id,
       });
     }
     const reactions = await prisma.postReaction.findMany({ where: { postId: post.id }, select: { type: true } });
