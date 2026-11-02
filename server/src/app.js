@@ -16,7 +16,10 @@ const app = express();
 app.use(helmet());
 app.use(cors({ origin: env.clientUrl }));
 app.use(express.json({ limit: '1mb' }));
-app.use('/uploads', express.static(uploadsDirectory, {
+app.use('/uploads', (_req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(uploadsDirectory, {
   dotfiles: 'deny',
   index: false,
   maxAge: '1d',
