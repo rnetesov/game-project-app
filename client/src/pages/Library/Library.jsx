@@ -337,6 +337,7 @@ export default function LibraryPage() {
               </button>
             ))}
           </div>
+          <GenreFilters value={activeGenre} onChange={setActiveGenre} />
           {loading ? <div className="library-state">Загружаем библиотеку...</div> : visibleEntries.length === 0 ? (
             <div className="library-empty">
               <Gamepad2 size={30} />
@@ -365,9 +366,47 @@ export default function LibraryPage() {
       {isOwnLibrary && activeTab === 'catalog' && (
         <section className="library-catalog">
           <div className="library-section-heading">
-            <div><h2>Каталог игр</h2><p>Найди игру и добавь её в свою коллекцию.</p></div>
-            <span>{games.length} игр</span>
+            <div><h2>Каталог игр</h2><p>Найди игру, добавь её себе или предложи сообществу новую.</p></div>
+            <div className="library-catalog-heading-actions">
+              <span>{games.length} игр</span>
+              <button type="button" className="library-add-game-trigger" onClick={() => { setShowAddGame(open => !open); setError(''); }}>
+                {showAddGame ? <X size={14} /> : <Plus size={14} />} {showAddGame ? 'Закрыть' : 'Предложить игру'}
+              </button>
+            </div>
           </div>
+          {showAddGame && (
+            <form className="library-add-game-form" onSubmit={submitNewGame}>
+              <div className="library-add-game-form-heading">
+                <div><strong>Добавить игру в общий каталог</strong><span>После добавления она станет доступна всем пользователям.</span></div>
+                <Tags size={18} />
+              </div>
+              <div className="library-add-game-fields">
+                <label>Название игры
+                  <input value={gameDraft.title} onChange={event => setGameDraft(current => ({ ...current, title: event.target.value }))} minLength={2} maxLength={80} required placeholder="Например, Alan Wake 2" />
+                </label>
+                <label>Основной жанр
+                  <select value={gameDraft.genre} onChange={event => setGameDraft(current => ({ ...current, genre: event.target.value }))}>
+                    {GENRES.map(genre => <option key={genre.value} value={genre.value}>{genre.label}</option>)}
+                  </select>
+                </label>
+                <label>Поджанр <span className="library-field-optional">необязательно</span>
+                  <input value={gameDraft.subGenre} onChange={event => setGameDraft(current => ({ ...current, subGenre: event.target.value }))} maxLength={40} placeholder="Например, Open world" />
+                </label>
+                <label>Платформы
+                  <input value={gameDraft.platforms} onChange={event => setGameDraft(current => ({ ...current, platforms: event.target.value }))} minLength={2} maxLength={120} required placeholder="PC, PlayStation, Xbox" />
+                </label>
+                <label>Год выпуска <span className="library-field-optional">необязательно</span>
+                  <input type="number" min="1970" max={new Date().getFullYear() + 2} value={gameDraft.releaseYear} onChange={event => setGameDraft(current => ({ ...current, releaseYear: event.target.value }))} placeholder="2025" />
+                </label>
+              </div>
+              <div className="library-add-game-footer">
+                <span>Проверяем повторы. Лимит — 10 новых игр за 24 часа.</span>
+                <button type="submit" className="primary-button" disabled={submittingGame || gameDraft.title.trim().length < 2 || gameDraft.platforms.trim().length < 2}>
+                  <Plus size={15} /> {submittingGame ? 'Добавляем...' : 'Добавить в каталог'}
+                </button>
+              </div>
+            </form>
+          )}
           <form className="library-search" onSubmit={submitSearch}>
             <Search size={17} />
             <input
@@ -381,6 +420,7 @@ export default function LibraryPage() {
             {searchInput && <button type="button" onClick={clearSearch} aria-label="Очистить поиск"><X size={15} /></button>}
             <button type="submit" disabled={searchInput.trim() === searchQuery}>Найти</button>
           </form>
+          <GenreFilters value={activeGenre} onChange={changeCatalogGenre} />
           {loading ? <div className="library-state">Ищем игры...</div> : games.length === 0 ? (
             <div className="library-empty library-empty-compact"><Search size={25} /><strong>Игры не найдены</strong><span>Попробуй другое название или жанр.</span></div>
           ) : (
@@ -398,7 +438,7 @@ export default function LibraryPage() {
               ))}
             </div>
           )}
-          <p className="library-catalog-note">Каталог GameHub пополняется. Игры, добавленные в библиотеку, сохраняются в профиле.</p>
+          <p className="library-catalog-note">Каждая новая игра становится общей для сообщества. Выбери жанр, чтобы быстро найти нужную категорию.</p>
         </section>
       )}
     </main>
