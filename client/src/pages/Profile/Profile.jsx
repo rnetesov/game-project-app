@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Camera, Check, Edit3, Gamepad2, MessageCircle, ShieldCheck, Trophy, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getProfile, getUserGameLibrary, updateMyProfile, getAssetUrl } from '../../services/api.js';
+import { getProfile, getUserGameLibrary, getFriendshipStatus, updateMyProfile, getAssetUrl } from '../../services/api.js';
+import FriendAction from '../../components/FriendAction.jsx';
 import '../Library/Library.css';
 
 function initials(name = '') {
@@ -25,11 +26,13 @@ export default function Profile() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [libraryEntries, setLibraryEntries] = useState([]);
+  const [friendship, setFriendship] = useState(null);
   const [libraryCounts, setLibraryCounts] = useState({ total: 0, PLAYING: 0, WANT_TO_PLAY: 0, COMPLETED: 0 });
 
   useEffect(() => {
     if (!viewedUsername) return;
     let cancelled = false;
+    setFriendship(null);
     Promise.all([getProfile(viewedUsername), getUserGameLibrary(viewedUsername)])
       .then(([profileResult, libraryResult]) => {
         if (cancelled) return;
@@ -40,12 +43,18 @@ export default function Profile() {
         setAvatarUrl(data.avatarUrl || '');
         setLibraryEntries(libraryResult.entries || []);
         setLibraryCounts(libraryResult.counts || { total: 0, PLAYING: 0, WANT_TO_PLAY: 0, COMPLETED: 0 });
+        if (data.id !== user?.id) {
+          const relationship = await getFriendshipStatus(data.id);
+          if (!cancelled) setFriendship(relationship);
+        } else {
+          setFriendship(null);
+        }
       })
       .catch(err => {
         if (!cancelled) setError(err.message);
       });
     return () => { cancelled = true; };
-  }, [viewedUsername]);
+  }, [viewedUsername, user?.id]);
 
   async function save(event) {
     event.preventDefault();
@@ -75,7 +84,10 @@ export default function Profile() {
       <div className="profile-title-row">
         <div><div className="eyebrow">ТВОЯ ИГРОВАЯ ЛИЧНОСТЬ</div><h1>{isOwnProfile ? 'Профиль игрока' : 'Профиль пользователя'}</h1><p>{isOwnProfile ? 'Управляй своим профилем и показывай достижения.' : 'Информация об игроке GameHub.'}</p></div>
         {isOwnProfile && !editing && <button className="primary-button" onClick={() => { setEditing(true); setMessage(''); setError(''); }}><Edit3 size={16}/> Редактировать</button>}
-        {!isOwnProfile && isViewedProfileLoaded && <button className="primary-button" onClick={() => navigate('/messages?userId=' + encodeURIComponent(profile.id))}><MessageCircle size={16}/> Написать сообщение</button>}
+        {!isOwnProfile && isViewedProfileLoaded && <div className="profile-social-actions">
+          {friendship && <FriendAction userId={profile.id} relationship={friendship.relationship} requestId={friendship.requestId}/>}
+          <button className="primary-button" onClick={() => navigate('/messages?userId=' + encodeURIComponent(profile.id))}><MessageCircle size={16}/> Написать сообщение</button>
+        </div>}
       </div>
 
       <section className="profile-hero">
