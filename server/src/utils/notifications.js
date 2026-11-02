@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma.js';
 
-export async function createNotification({ type, recipientId, actorId, postId }) {
+export async function createNotification({ type, recipientId, actorId, postId, conversationId }) {
   if (!recipientId || !actorId || recipientId === actorId) return;
 
   try {
@@ -10,6 +10,7 @@ export async function createNotification({ type, recipientId, actorId, postId })
         recipientId,
         actorId,
         ...(postId ? { postId } : {}),
+        ...(conversationId ? { conversationId } : {}),
       },
     });
   } catch (error) {
