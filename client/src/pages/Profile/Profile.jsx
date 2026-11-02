@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Camera, Check, Edit3, Gamepad2, MessageCircle, ShieldCheck, Trophy, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getProfile, updateMyProfile } from '../../services/api.js';
+import { getProfile, getUserGameLibrary, updateMyProfile } from '../../services/api.js';
+import '../Library/Library.css';
 
 function initials(name = '') {
   return name.slice(0, 2).toUpperCase() || 'GH';
@@ -23,17 +24,27 @@ export default function Profile() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [libraryEntries, setLibraryEntries] = useState([]);
+  const [libraryCounts, setLibraryCounts] = useState({ total: 0, PLAYING: 0, WANT_TO_PLAY: 0, COMPLETED: 0 });
 
   useEffect(() => {
     if (!viewedUsername) return;
-    getProfile(viewedUsername)
-      .then(({ user: data }) => {
+    let cancelled = false;
+    Promise.all([getProfile(viewedUsername), getUserGameLibrary(viewedUsername)])
+      .then(([profileResult, libraryResult]) => {
+        if (cancelled) return;
+        const data = profileResult.user;
         setProfile(data);
         setUsername(data.username);
         setBio(data.bio || '');
         setAvatarUrl(data.avatarUrl || '');
+        setLibraryEntries(libraryResult.entries || []);
+        setLibraryCounts(libraryResult.counts || { total: 0, PLAYING: 0, WANT_TO_PLAY: 0, COMPLETED: 0 });
       })
-      .catch((err) => setError(err.message));
+      .catch(err => {
+        if (!cancelled) setError(err.message);
+      });
+    return () => { cancelled = true; };
   }, [viewedUsername]);
 
   async function save(event) {
@@ -93,11 +104,38 @@ export default function Profile() {
       </form>}
 
       <div className="profile-stats-grid">
-        <div className="profile-stat"><span className="stat-icon purple"><Gamepad2 size={20}/></span><div><small>Игр в библиотеке</small><strong>0</strong><em>Скоро появится</em></div></div>
+        <div className="profile-stat"><span className="stat-icon purple"><Gamepad2 size={20}/></span><div><small>Игр в библиотеке</small><strong>{libraryCounts.total}</strong><em>{libraryCounts.PLAYING} сейчас · {libraryCounts.COMPLETED} пройдено</em></div></div>
         <div className="profile-stat"><span className="stat-icon orange"><Trophy size={20}/></span><div><small>Достижения</small><strong>0</strong><em>Путь только начинается</em></div></div>
         <div className="profile-stat"><span className="stat-icon green"><Camera size={20}/></span><div><small>Дата регистрации</small><strong>{created}</strong><em>В GameHub</em></div></div>
       </div>
-      <section className="profile-empty"><div className="profile-empty-icon"><Gamepad2 size={25}/></div><h3>Твоя игровая история начинается здесь</h3><p>Когда появятся библиотека и игровые сессии, здесь отобразятся твои игры и активность.</p></section>
+      <section className="profile-library">
+        <div className="profile-library-heading">
+          <div><h2>Игровая библиотека</h2><p>{libraryCounts.total} игр в коллекции</p></div>
+          <button type="button" className="text-button" onClick={() => navigate('/library' + (isOwnProfile ? '' : '?user=' + encodeURIComponent(viewedUsername)))}>
+            Вся библиотека <Gamepad2 size={15}/>
+          </button>
+        </div>
+        {libraryEntries.length === 0 ? (
+          <div className="profile-library-empty">
+            <Gamepad2 size={25}/>
+            <strong>{isOwnProfile ? 'Добавь первую игру в библиотеку' : 'Пока нет добавленных игр'}</strong>
+            <span>{isOwnProfile ? 'Выбери игры из каталога и отметь, во что играешь или что хочешь пройти.' : 'Этот пользователь пока не собрал коллекцию.'}</span>
+            {isOwnProfile && <button type="button" className="primary-button" onClick={() => navigate('/library')}>Открыть каталог</button>}
+          </div>
+        ) : (
+          <div className="profile-library-grid">
+            {libraryEntries.slice(0, 4).map(entry => (
+              <article className="profile-library-card" key={entry.id}>
+                <div className="profile-library-cover">
+                  <div className="library-cover-fallback"><Gamepad2 size={24}/><span>{entry.game.title}</span></div>
+                  {entry.game.coverUrl && <img src={entry.game.coverUrl} alt={'Обложка ' + entry.game.title} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }}/>}
+                </div>
+                <div><strong>{entry.game.title}</strong><span className={'library-status-label status-' + entry.status.toLowerCase()}>{({ PLAYING: 'Играю сейчас', WANT_TO_PLAY: 'Хочу пройти', COMPLETED: 'Пройдено' })[entry.status]}</span></div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
