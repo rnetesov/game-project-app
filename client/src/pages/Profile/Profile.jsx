@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Camera, Check, Edit3, Gamepad2, ShieldCheck, Trophy, X } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Camera, Check, Edit3, Gamepad2, MessageCircle, ShieldCheck, Trophy, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { getProfile, updateMyProfile } from '../../services/api.js';
 
@@ -10,9 +10,11 @@ function initials(name = '') {
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const viewedUsername = searchParams.get('user') || user?.username;
   const isOwnProfile = viewedUsername === user?.username;
+  const isViewedProfileLoaded = profile?.username === viewedUsername;
   const [profile, setProfile] = useState(user);
   const [editing, setEditing] = useState(false);
   const [username, setUsername] = useState(user?.username || '');
@@ -62,6 +64,7 @@ export default function Profile() {
       <div className="profile-title-row">
         <div><div className="eyebrow">ТВОЯ ИГРОВАЯ ЛИЧНОСТЬ</div><h1>{isOwnProfile ? 'Профиль игрока' : 'Профиль пользователя'}</h1><p>{isOwnProfile ? 'Управляй своим профилем и показывай достижения.' : 'Информация об игроке GameHub.'}</p></div>
         {isOwnProfile && !editing && <button className="primary-button" onClick={() => { setEditing(true); setMessage(''); setError(''); }}><Edit3 size={16}/> Редактировать</button>}
+        {!isOwnProfile && isViewedProfileLoaded && <button className="primary-button" onClick={() => navigate('/messages?userId=' + encodeURIComponent(profile.id))}><MessageCircle size={16}/> Написать сообщение</button>}
       </div>
 
       <section className="profile-hero">
