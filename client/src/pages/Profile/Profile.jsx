@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Camera, Check, Edit3, Gamepad2, MessageCircle, ShieldCheck, Trophy, X } from 'lucide-react';
+import { Check, Edit3, Gamepad2, MessageCircle, ShieldCheck, UserPlus, Users, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getProfile, getUserGameLibrary, updateMyProfile, getAssetUrl } from '../../services/api.js';
+import { getProfile, getUserGameLibrary, getAssetUrl, searchPlayers, sendFriendRequest, updateMyProfile } from '../../services/api.js';
 import '../Library/Library.css';
 
 function initials(name = '') {
@@ -24,17 +24,21 @@ export default function Profile() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [friendActionBusy, setFriendActionBusy] = useState(false);
+  const [friendship, setFriendship] = useState('NONE');
   const [libraryEntries, setLibraryEntries] = useState([]);
   const [libraryCounts, setLibraryCounts] = useState({ total: 0, PLAYING: 0, WANT_TO_PLAY: 0, COMPLETED: 0 });
 
   useEffect(() => {
     if (!viewedUsername) return;
     let cancelled = false;
-    Promise.all([getProfile(viewedUsername), getUserGameLibrary(viewedUsername)])
-      .then(([profileResult, libraryResult]) => {
+    Promise.all([getProfile(viewedUsername), getUserGameLibrary(viewedUsername), searchPlayers(viewedUsername)])
+      .then(([profileResult, libraryResult, playersResult]) => {
         if (cancelled) return;
         const data = profileResult.user;
+        const player = (playersResult.users || []).find(item => item.username.toLowerCase() === viewedUsername.toLowerCase());
         setProfile(data);
+        setFriendship(player?.relationship || 'NONE');
         setUsername(data.username);
         setBio(data.bio || '');
         setAvatarUrl(data.avatarUrl || '');
@@ -46,6 +50,22 @@ export default function Profile() {
       });
     return () => { cancelled = true; };
   }, [viewedUsername]);
+
+  async function addOrAcceptFriend() {
+    if (!profile?.id || friendActionBusy || friendship === 'FRIENDS' || friendship === 'SENT') return;
+    setFriendActionBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const result = await sendFriendRequest(profile.id);
+      setFriendship(result.request?.status === 'ACCEPTED' || result.message === 'Заявка принята' ? 'FRIENDS' : 'SENT');
+      setMessage(result.message || 'Заявка отправлена');
+    } catch (err) {
+      setError(err.message || 'Не удалось обновить список друзей');
+    } finally {
+      setFriendActionBusy(false);
+    }
+  }
 
   async function save(event) {
     event.preventDefault();
@@ -75,13 +95,20 @@ export default function Profile() {
       <div className="profile-title-row">
         <div><div className="eyebrow">ТВОЯ ИГРОВАЯ ЛИЧНОСТЬ</div><h1>{isOwnProfile ? 'Профиль игрока' : 'Профиль пользователя'}</h1><p>{isOwnProfile ? 'Управляй своим профилем и показывай достижения.' : 'Информация об игроке GameHub.'}</p></div>
         {isOwnProfile && !editing && <button className="primary-button" onClick={() => { setEditing(true); setMessage(''); setError(''); }}><Edit3 size={16}/> Редактировать</button>}
-        {!isOwnProfile && isViewedProfileLoaded && <button className="primary-button" onClick={() => navigate('/messages?userId=' + encodeURIComponent(profile.id))}><MessageCircle size={16}/> Написать сообщение</button>}
+        {!isOwnProfile && isViewedProfileLoaded && <div className="profile-actions">
+          <button className="primary-button" onClick={() => navigate('/messages?userId=' + encodeURIComponent(profile.id))}><MessageCircle size={16}/> Написать сообщение</button>
+          {friendship === 'FRIENDS'
+            ? <span className="profile-friend-pill"><Users size={15}/> Вы друзья</span>
+            : <button className="profile-friend-button" onClick={addOrAcceptFriend} disabled={friendActionBusy || friendship === 'SENT'}>
+                <UserPlus size={15}/>{friendActionBusy ? 'Обновляем...' : friendship === 'SENT' ? 'Заявка отправлена' : friendship === 'RECEIVED' ? 'Принять заявку' : 'Добавить в друзья'}
+              </button>}
+        </div>}
       </div>
 
       <section className="profile-hero">
         <div className="profile-avatar-wrap">
           {profile?.avatarUrl ? <img className="profile-avatar-image" src={profile.avatarUrl} alt="Аватар" /> : <div className="profile-avatar-fallback">{initials(profile?.username)}</div>}
-          <span className="profile-online-dot" title="В сети"/>
+          <span className={'profile-online-dot' + (profile?.online ? ' is-online' : '')} title={profile?.online ? 'В сети' : 'Не в сети'} aria-label={profile?.online ? 'В сети' : 'Не в сети'} />
         </div>
         <div className="profile-identity">
           <span className="profile-label">GAMEHUB PLAYER</span>
@@ -105,8 +132,8 @@ export default function Profile() {
 
       <div className="profile-stats-grid">
         <div className="profile-stat"><span className="stat-icon purple"><Gamepad2 size={20}/></span><div><small>Игр в библиотеке</small><strong>{libraryCounts.total}</strong><em>{libraryCounts.PLAYING} сейчас · {libraryCounts.COMPLETED} пройдено</em></div></div>
-        <div className="profile-stat"><span className="stat-icon orange"><Trophy size={20}/></span><div><small>Достижения</small><strong>0</strong><em>Путь только начинается</em></div></div>
-        <div className="profile-stat"><span className="stat-icon green"><Camera size={20}/></span><div><small>Дата регистрации</small><strong>{created}</strong><em>В GameHub</em></div></div>
+        <div className="profile-stat"><span className="stat-icon orange"><Gamepad2 size={20}/></span><div><small>Хочу пройти</small><strong>{libraryCounts.WANT_TO_PLAY}</strong><em>В списке желаний</em></div></div>
+        <div className="profile-stat"><span className="stat-icon green"><Check size={20}/></span><div><small>Дата регистрации</small><strong>{created}</strong><em>В GameHub</em></div></div>
       </div>
       <section className="profile-library">
         <div className="profile-library-heading">

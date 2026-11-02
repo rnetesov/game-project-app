@@ -1,5 +1,5 @@
 import {
-  Bell, Search, LogOut, CheckCheck, MessageCircle, Heart, Flame, Laugh, Eye, Frown, AtSign,
+  Bell, Search, ArrowRight, LogOut, CheckCheck, MessageCircle, Heart, Flame, Laugh, Eye, Frown, AtSign,
   UserPlus, Users, X, MonitorCheck,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -131,6 +131,7 @@ export default function MainLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const initial = user?.username?.charAt(0)?.toUpperCase() || 'G';
+  const [gameSearchQuery, setGameSearchQuery] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [activeNotificationTab, setActiveNotificationTab] = useState('unread');
   const [unreadCount, setUnreadCount] = useState(0);
@@ -144,6 +145,14 @@ export default function MainLayout() {
   const visibleNotifications = activeNotificationTab === 'unread'
     ? notifications.filter(notification => !notification.readAt)
     : notifications;
+
+  function submitGameSearch(event) {
+    event.preventDefault();
+    const params = new URLSearchParams({ tab: 'catalog' });
+    const query = gameSearchQuery.trim();
+    params.set('q', query);
+    navigate('/library?' + params.toString());
+  }
 
   const closeToast = useCallback((id) => {
     setToasts(current => current.filter(item => item.id !== id));
@@ -284,7 +293,16 @@ export default function MainLayout() {
         <header className="topbar">
           <div className="breadcrumb">Игровая платформа <span>/</span> <strong>Обзор</strong></div>
           <div className="topbar-actions">
-            <label className="search-box"><Search size={17} /><input placeholder="Найти игру..." /></label>
+            <form className="search-box" onSubmit={submitGameSearch} role="search">
+              <Search size={17} />
+              <input
+                value={gameSearchQuery}
+                onChange={event => setGameSearchQuery(event.target.value)}
+                placeholder="Найти игру..."
+                aria-label="Поиск игры в каталоге"
+              />
+              <button type="submit" className="search-submit" aria-label="Открыть поиск игр"><ArrowRight size={14} /></button>
+            </form>
             <div className="notification-anchor">
               <button
                 className={`icon-button notification-trigger${unreadCount > 0 ? ' has-unread' : ''}`}

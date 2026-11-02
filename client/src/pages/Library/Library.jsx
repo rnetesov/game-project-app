@@ -131,14 +131,16 @@ export default function LibraryPage() {
   const [searchParams] = useSearchParams();
   const viewedUsername = searchParams.get('user') || user?.username;
   const isOwnLibrary = viewedUsername === user?.username;
-  const [activeTab, setActiveTab] = useState('library');
+  const requestedQuery = searchParams.get('q') || '';
+  const catalogRequested = searchParams.get('tab') === 'catalog' || Boolean(requestedQuery);
+  const [activeTab, setActiveTab] = useState(() => catalogRequested ? 'catalog' : 'library');
   const [activeStatus, setActiveStatus] = useState('ALL');
   const [activeGenre, setActiveGenre] = useState('ALL');
   const [entries, setEntries] = useState([]);
   const [counts, setCounts] = useState({ total: 0, PLAYING: 0, WANT_TO_PLAY: 0, COMPLETED: 0 });
   const [games, setGames] = useState([]);
-  const [searchInput, setSearchInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState(requestedQuery);
+  const [searchQuery, setSearchQuery] = useState(requestedQuery);
   const [profileUser, setProfileUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busyGames, setBusyGames] = useState({});
@@ -159,6 +161,13 @@ export default function LibraryPage() {
     return () => URL.revokeObjectURL(previewUrl);
   }, [gameDraft.coverFile]);
 
+  useEffect(() => {
+    if (!isOwnLibrary) return;
+    setActiveTab(catalogRequested ? 'catalog' : 'library');
+    setSearchInput(requestedQuery);
+    setSearchQuery(requestedQuery);
+  }, [catalogRequested, isOwnLibrary, requestedQuery]);
+
   const refreshLibrary = useCallback(async () => {
     const result = await getUserGameLibrary(viewedUsername);
     setProfileUser(result.user);
@@ -172,7 +181,7 @@ export default function LibraryPage() {
     setError('');
     Promise.all([
       getUserGameLibrary(viewedUsername),
-      isOwnLibrary ? getGames('', '') : Promise.resolve({ games: [] }),
+      isOwnLibrary ? getGames(requestedQuery, '') : Promise.resolve({ games: [] }),
     ]).then(([library, catalog]) => {
       if (cancelled) return;
       setProfileUser(library.user);
@@ -185,7 +194,7 @@ export default function LibraryPage() {
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [viewedUsername, isOwnLibrary]);
+  }, [viewedUsername, isOwnLibrary, requestedQuery]);
 
   const visibleEntries = useMemo(() => entries.filter(entry =>
     (activeStatus === 'ALL' || entry.status === activeStatus)

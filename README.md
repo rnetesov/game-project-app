@@ -1,105 +1,95 @@
 # GameHub
-React + Express social gaming platform.
 
-## Install
-Backend: cd server && npm install, copy .env.example to .env, then npm run db:generate and npm run db:migrate -- --name friends.
-Frontend: cd client && npm install.
-Run backend with npm run dev in server; frontend with npm run dev in client.
+GameHub is a React and Express social gaming platform. The frontend uses Vite; the backend uses Prisma 6 and SQLite.
 
-## Friends API (Bearer token required)
-- GET /api/friends/search?q=username
-- GET /api/friends
-- GET /api/friends/requests
-- POST /api/friends/requests body { "userId": "..." }
-- PATCH /api/friends/requests/:id body { "action": "accept" | "decline" }
-- DELETE /api/friends/:userId
-- POST /api/friends/heartbeat
+## Local development
 
-Online status is based on lastSeenAt with a 90-second threshold. The frontend refreshes friend lists every 15 seconds.
+Use two terminals. The server commands below are run from `server`; client commands are run from `client`.
 
-## Демонстрационные данные
-После установки зависимостей и создания server/.env можно одной командой подготовить базу данных:
-\`\`\`powershell
+### Backend
+
+```powershell
 cd server
-npm.cmd run db:setup:demo
-\`\`\`
-Команда применит все Prisma-миграции, сгенерирует Prisma Client и добавит демо-данные. Сидер можно запускать повторно: он не удаляет пользовательские данные и не создаёт повторные копии своих записей.
+npm install
+Copy-Item .env.example .env
+```
 
-В демо-наборе: 16 тестовых пользователей, 32 публикации, комментарии, лайки, принятые дружеские связи и входящие заявки.
+Edit `server/.env` and set `JWT_SECRET` to a unique random value with at least 32 characters. The other template values point to the local SQLite database and Vite development server.
 
-**Тестовые аккаунты**
-- Логин: \`pixel_ranger\`, \`neon_fox\`, \`vortex\`, \`luna_bytes\` и любой другой демо-username из списка в \`server/prisma/seed-demo-posts.js\`.
-- Пароль для всех демо-аккаунтов: \`GameHubDemo2026!\`
+```powershell
+npm run db:setup:demo
+npm run dev
+```
 
-Это только локальные тестовые аккаунты. Не используй общий пароль на публичном или production-сайте.
+The API listens on `http://localhost:4000` by default.
 
-## Визуальные уведомления
-- Новые события показываются всплывающими карточками внутри GameHub, если вкладка активна.
-- Если вкладка GameHub скрыта, браузер может показать системное уведомление на рабочем столе.
-- Чтобы разрешить системные уведомления, открой колокольчик и нажми **«Включить уведомления браузера»**.
-- При наличии непрочитанных событий в заголовке вкладки появляется счётчик.
-- Проверка новых событий выполняется примерно каждые 15 секунд; при возвращении к вкладке выполняется дополнительная проверка.
-- Системные уведомления работают, пока GameHub открыт в браузере. Уведомления после закрытия сайта или браузера (Web Push) в этой версии не реализованы.
-- Если разрешение было заблокировано, измени его в настройках сайта браузера.
+### Frontend
 
-## Личные сообщения v0.7
-- Начать личную переписку можно с **любым зарегистрированным пользователем**, дружба не требуется.
-- В разделе «Сообщения» можно найти игрока по никнейму или выбрать друга из предложенного списка.
-- Диалог приватный: историю и отправку сообщений видят только два его участника.
-- История подгружается страницами, а новые сообщения и список диалогов обновляются автоматически.
-- Непрочитанные сообщения учитываются отдельно для каждого участника диалога.
+In a second terminal:
 
-API (требуется Bearer token):
-- GET \`/api/conversations\` — список диалогов и счётчики непрочитанного.
-- POST \`/api/conversations\` body \`{ "userId": "..." }\` — открыть или создать диалог с любым пользователем.
-- GET \`/api/conversations/:id/messages?limit=30&before=...\` — история сообщений.
-- POST \`/api/conversations/:id/messages\` body \`{ "content": "..." }\` — отправить сообщение (до 2000 символов).
-- PATCH \`/api/conversations/:id/read\` — отметить сообщения диалога прочитанными.
+```powershell
+cd client
+npm install
+Copy-Item .env.example .env
+npm run dev
+```
 
-После получения обновлений из dev в папке server выполни:
-\`\`\`powershell
-npm.cmd run db:setup:demo
-\`\`\`
+Vite listens on `http://localhost:5173` by default. Set `VITE_API_URL` in `client/.env` to change the API base URL.
 
+## Database commands
 
-## Уведомления о личных сообщениях
+From `server`:
 
-- Новое личное сообщение создаёт уведомление у получателя с именем отправителя.
-- Нажатие на уведомление открывает именно тот диалог, в котором пришло сообщение.
-- Уведомление автоматически становится прочитанным при открытии и чтении соответствующего диалога.
-- Если разрешены системные уведомления браузера, новое сообщение может отображаться и при переключении на другую вкладку.
+- `npm run db:generate` — generate Prisma Client.
+- `npm run db:migrate` — run `prisma migrate dev` for development schema changes.
+- `npx prisma migrate deploy` — apply checked-in migrations without creating a new migration.
+- `npm run db:studio` — open Prisma Studio.
+- `npm run db:seed:demo` — add demo content to the current database.
+- `npm run db:setup:demo` — apply migrations, generate Prisma Client, and seed demo content.
 
-## Изображения и скриншоты в ленте
+`db:setup:demo` and the demo seed are for local/demo databases. Demo accounts share a password defined in `server/prisma/seed-demo-posts.js`; never use those accounts or that password on a public or production instance. The seed is designed to be rerunnable without deleting user data.
 
-- В редакторе публикации можно вставить скриншот сочетанием **Ctrl+V**, выбрать файлы кнопкой «Добавить изображения» или перетащить их в редактор.
-- Поддерживаются JPG, PNG, WEBP и GIF.
-- До 4 изображений в одной публикации, до 8 МБ каждое.
-- Перед публикацией показываются миниатюры; ненужные вложения можно убрать.
-- Изображения можно открыть в полноразмерном просмотре нажатием на них.
-- Файлы хранятся в `server/uploads/post-images`, а в SQLite сохраняются ссылки и связь с публикацией.
-- Папка `server/uploads` исключена из Git. Для размещения на сервере необходимо подключить постоянное хранилище файлов, чтобы загруженные изображения не пропадали после пересоздания приложения.
+The database provider is SQLite. `DATABASE_URL` is read by Prisma from `server/prisma/schema.prisma`; the example value `file:./dev.db` resolves beside that schema.
 
-## Фильтры уведомлений
+## Project commands
 
-- В меню колокольчика есть вкладки **«Непрочитанные»** и **«Все»**.
-- Вкладка «Непрочитанные» открывается первой и показывает только события, которые ещё не открывали.
-- После открытия уведомление сразу исчезает из списка непрочитанных, но остаётся в полной истории на вкладке «Все».
-- Кнопка «Прочитать все» сохраняет историю, только меняет статус событий.
+From `client`:
 
-## Форматирование публикаций
+- `npm run dev` — start Vite.
+- `npm run build` — create a production frontend build.
+- `npm run preview` — preview the production build locally.
 
-- В редакторе ленты доступны жирный и курсивный текст, подчёркивание, заголовки, маркированные и нумерованные списки, ссылки.
-- Поддерживаются отмена и повтор последнего действия, а также сброс форматирования.
-- Текст можно вставлять из буфера обмена; HTML-форматирование из внешних источников вставляется как обычный текст, чтобы не переносить небезопасную разметку.
-- Вставка изображения через **Ctrl+V** продолжает работать вместе с WYSIWYG-редактором.
-- Максимальная длина публикации — 1000 отображаемых символов.
-- Новые форматированные публикации сохраняются в ограниченном JSON-формате; старые обычные текстовые записи продолжают отображаться без изменений.
+From `server`:
 
-## Редактирование публикаций
+- `npm run dev` — start the API with nodemon.
+- `npm start` — start the API with Node.js.
 
-- Автор публикации может открыть режим редактирования кнопкой с карандашом.
-- В режиме редактирования используется тот же WYSIWYG-редактор, что и при создании записи.
-- Можно исправить текст и форматирование, сохранить или удалить существующие изображения, добавить новые через выбор файлов или Ctrl+V.
-- В одной публикации остаётся не более 4 изображений.
-- После сохранения публикация помечается «изменено», а реакции и комментарии сохраняются.
-- Сервер разрешает редактирование только автору публикации; форматированный текст и список сохраняемых изображений проверяются.
+There is no configured test, lint, or typecheck script at present. GitHub Actions uses Node.js 22, builds the client, checks syntax for selected server files, validates Prisma, applies migrations to a CI database, and generates Prisma Client.
+
+## Features
+
+- Account registration and login, public profiles, profile editing, and JWT authentication.
+- Friend search, requests, online status, and friend-only feed filtering.
+- Activity feed with rich text, image attachments, reactions, comments, threaded replies, mentions, search, and post editing/deletion.
+- Direct messages with message history, read state, and private file attachments.
+- In-app and browser notifications while GameHub is open. Web Push after closing the site or browser is not implemented.
+- Searchable game catalog, community game submissions, and personal libraries with playing, wanted, and completed statuses.
+
+## API overview
+
+Authenticated endpoints use `Authorization: Bearer <token>`.
+
+- `GET /api/health` — API health.
+- `/api/auth` — register, login, and current-user lookup.
+- `/api/profiles` — public profile lookup and authenticated profile editing.
+- `/api/friends` — search, friend requests, friend list, and heartbeat.
+- `/api/posts` — feed, post CRUD, reactions, and comments.
+- `/api/notifications` — notification list and read actions.
+- `/api/conversations` — direct messages, read state, and attachment downloads.
+- `/api/games` — catalog and personal game libraries.
+
+## File storage and deployment
+
+Post images and game covers are stored in `server/uploads` and served from `/uploads`. Message attachments are stored in `server/private-uploads/message-attachments` and downloaded through an authenticated, conversation-membership-checked endpoint. Both directories need persistent storage and backups in a deployed environment. Do not commit `.env` files, private attachments, or uploaded user files.
+
+SQLite and local filesystem storage are configured for the current project setup. A multi-instance deployment needs shared persistent storage and a database/storage plan appropriate for that deployment.

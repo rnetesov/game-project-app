@@ -9,8 +9,16 @@ const updateSchema = z.object({
 
 const profileSelect = {
   id: true, username: true, avatarUrl: true, bio: true,
-  level: true, xp: true, createdAt: true,
+  level: true, xp: true, createdAt: true, lastSeenAt: true,
 };
+
+function shapeProfile(user) {
+  const { lastSeenAt, ...profile } = user;
+  return {
+    ...profile,
+    online: Boolean(lastSeenAt && lastSeenAt >= new Date(Date.now() - 90 * 1000)),
+  };
+}
 
 export async function getProfile(req, res) {
   const user = await prisma.user.findUnique({
@@ -18,7 +26,7 @@ export async function getProfile(req, res) {
     select: profileSelect,
   });
   if (!user) return res.status(404).json({ success: false, message: 'Профиль не найден' });
-  return res.json({ success: true, user });
+  return res.json({ success: true, user: shapeProfile(user) });
 }
 
 export async function updateProfile(req, res) {
@@ -44,7 +52,7 @@ export async function updateProfile(req, res) {
       data: parsed.data,
       select: { ...profileSelect, email: true },
     });
-    return res.json({ success: true, user });
+    return res.json({ success: true, user: shapeProfile(user) });
   } catch (error) {
     if (error.code === 'P2002') {
       return res.status(409).json({ success: false, message: 'Этот никнейм уже занят' });

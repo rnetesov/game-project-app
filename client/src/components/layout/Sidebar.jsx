@@ -1,4 +1,4 @@
-import { Gamepad2, Home, Library, Trophy, Users, Settings, Newspaper, MessageCircle } from 'lucide-react';
+import { Gamepad2, Home, Library, Users, Newspaper, MessageCircle } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 
@@ -9,7 +9,6 @@ const links = [
   { to: '/messages', label: 'Сообщения', icon: MessageCircle },
   { to: '/friends', label: 'Друзья', icon: Users },
   { to: '/profile', label: 'Мой профиль', icon: Users },
-  { to: '/achievements', label: 'Достижения', icon: Trophy },
 ];
 
 export default function Sidebar() {
@@ -25,7 +24,6 @@ export default function Sidebar() {
     </nav>
     <div className="sidebar-bottom">
       <div className="profile-mini"><div className="avatar">{initial}</div><div><strong>{user?.username || 'Игрок'}</strong><small>Игрок GameHub</small></div></div>
-      <button className="settings-link"><Settings size={18} /> Настройки</button>
     </div>
   </aside>;
 }

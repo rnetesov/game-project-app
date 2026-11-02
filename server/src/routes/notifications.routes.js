@@ -5,11 +5,12 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from '../controllers/notifications.controller.js';
+import { asyncHandler } from '../utils/async-handler.js';
 
 const router = Router();
 router.use(requireAuth);
-router.get('/', listNotifications);
-router.patch('/read-all', markAllNotificationsRead);
-router.patch('/:id/read', markNotificationRead);
+router.get('/', asyncHandler(listNotifications));
+router.patch('/read-all', asyncHandler(markAllNotificationsRead));
+router.patch('/:id/read', asyncHandler(markNotificationRead));
 
 export default router;

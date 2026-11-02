@@ -116,3 +116,18 @@
 .friend-profile-link{display:flex;align-items:center;gap:11px;flex:1;min-width:0;color:inherit;text-decoration:none;border-radius:9px}
 .friend-profile-link:hover .friend-card-info>strong{color:#716be0}
 .friend-profile-link:focus-visible{outline:2px solid #918bed;outline-offset:4px}
+
+.game-cover{isolation:isolate}
+.game-cover-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cover-label{z-index:1}
+.home-data-state,.home-library-empty{padding:28px 20px;text-align:center;color:#9b9eae;font-size:11px;background:#fff;border:1px solid #eff0f5;border-radius:12px}
+.home-library-empty{display:flex;flex-direction:column;align-items:center;gap:10px;border-style:dashed}
+.home-library-empty>svg{color:#8983ed}
+.home-library-empty strong{font-size:13px;color:#55586b}
+.home-library-empty span{max-width:420px;line-height:1.6}
+.home-library-empty .primary-button{margin-top:4px}
+.home-data-error{padding:10px 12px;margin:0 0 12px;border:1px solid #f3d8d5;border-radius:9px;background:#fff3f2;color:#bb5e58;font-size:11px}
+.search-submit{display:grid;place-items:center;padding:3px;background:transparent;color:#8f91a3}
+.search-submit:hover{color:#716be0}
+.profile-online-dot:not(.is-online){background:#c4c7d3}
+@media(max-width:700px){.breadcrumb{display:none}.search-box{width:clamp(110px,36vw,170px);background:#fff}.search-box input{display:block;min-width:0;font-size:10px}}
