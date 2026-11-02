@@ -143,6 +143,7 @@ model Message {
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  attachments    MessageAttachment[]
   @@index([conversationId, createdAt])
   @@index([senderId])
 }
