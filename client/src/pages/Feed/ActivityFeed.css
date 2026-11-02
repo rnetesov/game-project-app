@@ -104,3 +104,23 @@
 .feed-post.is-notification-target{outline:2px solid #8b84ee;outline-offset:3px;animation:feed-notification-target 2.6s ease-out}
 @keyframes feed-notification-target{0%,35%{box-shadow:0 0 0 5px #7771e82b}100%{box-shadow:0 0 0 0 #7771e800}}
 @media(prefers-reduced-motion:reduce){.feed-post.is-notification-target{animation:none}}
+
+
+/* Threaded comments and mentions */
+.feed-comment-thread{display:flex;flex-direction:column;gap:4px}
+.feed-comment-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.feed-comment-body>.feed-comment-replies{display:block;margin-top:10px;padding-left:14px;border-left:2px solid #eeedf8}
+.feed-comment-body>.feed-comment-actions{display:flex;align-items:center;gap:12px;margin-top:5px}
+.feed-comment-actions>button{display:inline-flex;align-items:center;gap:4px;padding:3px 0;background:transparent;color:#85889a;font-size:9px;font-weight:700}
+.feed-comment-actions>button:hover{color:#716be0}
+.feed-comment-actions .feed-comment-delete{color:#a3a5b2}
+.feed-comment-actions .feed-comment-delete:hover{color:#d66b65}
+.feed-comment-reply-form{margin-top:8px}
+.feed-comment-form .feed-reply-cancel{width:auto;padding:0 7px;background:transparent;color:#888a99;font-size:9px}
+.feed-comment-form .feed-reply-cancel:hover{color:#716be0}
+.feed-comment-hint{margin-top:7px;color:#a5a7b4;font-size:9px}
+.feed-mention{color:#716be0;font-weight:800;text-decoration:none}
+.feed-mention:hover{text-decoration:underline;text-underline-offset:2px}
+.feed-comment.is-notification-target{border-radius:9px;background:#f6f5ff;outline:2px solid #938cf0;outline-offset:3px;animation:feed-comment-target 2.6s ease-out}
+@keyframes feed-comment-target{0%,35%{box-shadow:0 0 0 5px #7771e82b}100%{box-shadow:0 0 0 0 #7771e800}}
+@media(prefers-reduced-motion:reduce){.feed-comment.is-notification-target{animation:none}}

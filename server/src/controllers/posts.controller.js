@@ -312,7 +312,7 @@ export async function listPostComments(req, res, next) {
       where: { postId: post.id },
       orderBy: { createdAt: 'asc' },
       select: {
-        id: true, content: true, authorId: true, createdAt: true,
+        id: true, content: true, authorId: true, parentId: true, createdAt: true,
         author: { select: { id: true, username: true, avatarUrl: true } },
       },
     });
@@ -323,6 +323,7 @@ export async function listPostComments(req, res, next) {
 export async function createPostComment(req, res, next) {
   const parsed = z.object({
     content: z.string().trim().min(1, 'Комментарий не может быть пустым').max(500, 'Максимум 500 символов'),
+    parentId: z.string().min(1).max(100).nullable().optional(),
   }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({
     success: false, message: parsed.error.issues[0]?.message || 'Некорректный комментарий',
@@ -330,14 +331,76 @@ export async function createPostComment(req, res, next) {
   try {
     const post = await prisma.post.findUnique({ where: { id: req.params.id }, select: { id: true, authorId: true } });
     if (!post) return res.status(404).json({ success: false, message: 'Публикация не найдена' });
+
+    let parentComment = null;
+    if (parsed.data.parentId) {
+      parentComment = await prisma.comment.findUnique({
+        where: { id: parsed.data.parentId },
+        select: { id: true, postId: true, authorId: true },
+      });
+      if (!parentComment || parentComment.postId !== post.id) {
+        return res.status(400).json({ success: false, message: 'Комментарий для ответа не найден' });
+      }
+    }
+
     const comment = await prisma.comment.create({
-      data: { postId: post.id, authorId: req.user.id, content: parsed.data.content },
+      data: {
+        postId: post.id,
+        authorId: req.user.id,
+        content: parsed.data.content,
+        parentId: parentComment?.id || null,
+      },
       select: {
-        id: true, content: true, authorId: true, createdAt: true,
+        id: true, content: true, authorId: true, parentId: true, createdAt: true,
         author: { select: { id: true, username: true, avatarUrl: true } },
       },
     });
-    await createNotification({ type: 'COMMENT', recipientId: post.authorId, actorId: req.user.id, postId: post.id });
+
+    const notified = new Set([req.user.id]);
+    if (parentComment?.authorId && !notified.has(parentComment.authorId)) {
+      await createNotification({
+        type: 'COMMENT_REPLY',
+        recipientId: parentComment.authorId,
+        actorId: req.user.id,
+        postId: post.id,
+        commentId: comment.id,
+      });
+      notified.add(parentComment.authorId);
+    }
+    if (post.authorId && !notified.has(post.authorId)) {
+      await createNotification({
+        type: 'COMMENT',
+        recipientId: post.authorId,
+        actorId: req.user.id,
+        postId: post.id,
+        commentId: comment.id,
+      });
+      notified.add(post.authorId);
+    }
+
+    const mentionedUsernames = [...new Set(
+      [...parsed.data.content.matchAll(/(?:^|[^\w@])@([A-Za-z0-9_]{2,24})(?![A-Za-z0-9_])/g)]
+        .map(match => match[1])
+    )];
+    if (mentionedUsernames.length) {
+      const mentionedUsers = await prisma.user.findMany({
+        where: { username: { in: mentionedUsernames } },
+        select: { id: true },
+      });
+      await Promise.all(mentionedUsers
+        .filter(mentionedUser => !notified.has(mentionedUser.id))
+        .map(async mentionedUser => {
+          notified.add(mentionedUser.id);
+          await createNotification({
+            type: 'MENTION',
+            recipientId: mentionedUser.id,
+            actorId: req.user.id,
+            postId: post.id,
+            commentId: comment.id,
+          });
+        }));
+    }
+
     res.status(201).json({ success: true, comment });
   } catch (error) { next(error); }
 }
@@ -345,13 +408,31 @@ export async function createPostComment(req, res, next) {
 export async function deletePostComment(req, res, next) {
   try {
     const comment = await prisma.comment.findUnique({
-      where: { id: req.params.commentId }, select: { id: true, authorId: true },
+      where: { id: req.params.commentId },
+      select: { id: true, postId: true, authorId: true },
     });
     if (!comment) return res.status(404).json({ success: false, message: 'Комментарий не найден' });
     if (comment.authorId !== req.user.id) return res.status(403).json({
       success: false, message: 'Можно удалить только свой комментарий',
     });
-    await prisma.comment.delete({ where: { id: comment.id } });
-    res.json({ success: true });
+
+    const allComments = await prisma.comment.findMany({
+      where: { postId: comment.postId },
+      select: { id: true, parentId: true },
+    });
+    const deletedIds = new Set([comment.id]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const item of allComments) {
+        if (item.parentId && deletedIds.has(item.parentId) && !deletedIds.has(item.id)) {
+          deletedIds.add(item.id);
+          changed = true;
+        }
+      }
+    }
+
+    await prisma.comment.deleteMany({ where: { id: { in: [...deletedIds] } } });
+    res.json({ success: true, deletedCount: deletedIds.size });
   } catch (error) { next(error); }
 }

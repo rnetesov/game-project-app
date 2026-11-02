@@ -20,6 +20,7 @@ export async function listNotifications(req, res, next) {
           id: true,
           type: true,
           postId: true,
+          commentId: true,
           conversationId: true,
           createdAt: true,
           readAt: true,

@@ -1,5 +1,5 @@
 import {
-  Bell, Search, LogOut, CheckCheck, MessageCircle, Heart, Flame, Laugh, Eye, Frown,
+  Bell, Search, LogOut, CheckCheck, MessageCircle, Heart, Flame, Laugh, Eye, Frown, AtSign,
   UserPlus, Users, X, MonitorCheck,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -13,6 +13,8 @@ import { useAuth } from '../../context/AuthContext.jsx';
 function notificationText(type) {
   switch (type) {
     case 'COMMENT': return 'прокомментировал вашу публикацию';
+    case 'COMMENT_REPLY': return 'ответил на ваш комментарий';
+    case 'MENTION': return 'упомянул вас в комментарии';
     case 'MESSAGE': return 'отправил вам сообщение';
     case 'LIKE': return 'поставил лайк вашей публикации';
     case 'REACTION_FIRE': return 'поставил реакцию 🔥 на вашу публикацию';
@@ -29,6 +31,8 @@ function notificationText(type) {
 function notificationTitle(type) {
   switch (type) {
     case 'COMMENT': return 'Новый комментарий';
+    case 'COMMENT_REPLY': return 'Ответ на комментарий';
+    case 'MENTION': return 'Вас упомянули';
     case 'MESSAGE': return 'Новое сообщение';
     case 'LIKE': return 'Новый лайк';
     case 'REACTION_FIRE': return 'Новая реакция: 🔥';
@@ -45,7 +49,9 @@ function notificationTitle(type) {
 function NotificationIcon({ type, size = 18 }) {
   const props = { size, strokeWidth: 2 };
   switch (type) {
-    case 'COMMENT': return <MessageCircle {...props} />;
+    case 'COMMENT':
+    case 'COMMENT_REPLY': return <MessageCircle {...props} />;
+    case 'MENTION': return <AtSign {...props} />;
     case 'MESSAGE': return <MessageCircle {...props} />;
     case 'LIKE':
     case 'REACTION_HEART': return <Heart {...props} />;
@@ -62,6 +68,11 @@ function NotificationIcon({ type, size = 18 }) {
 function notificationTarget(notification) {
   if (notification.type === 'MESSAGE' && notification.conversationId) {
     return '/messages?conversation=' + encodeURIComponent(notification.conversationId);
+  }
+  if (['COMMENT', 'COMMENT_REPLY', 'MENTION'].includes(notification.type)
+    && notification.postId && notification.commentId) {
+    return '/feed?post=' + encodeURIComponent(notification.postId)
+      + '&comment=' + encodeURIComponent(notification.commentId);
   }
   if (notification.type.startsWith('REACTION_') && notification.postId) {
     return '/feed?post=' + encodeURIComponent(notification.postId);
