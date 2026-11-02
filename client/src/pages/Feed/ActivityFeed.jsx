@@ -141,6 +141,7 @@ export default function ActivityFeed() {
       requestedPostIdRef.current = null;
       return;
     }
+    if (loading) return;
 
     const existingPost = posts.find(post => post.id === targetPostId);
     if (existingPost) {
@@ -175,7 +176,7 @@ export default function ActivityFeed() {
           return next;
         }, { replace: true });
       });
-  }, [targetPostId, posts, setSearchParams]);
+  }, [targetPostId, posts, loading, setSearchParams]);
 
   function handleEditorChange(nextContent, nextTextLength) {
     setContent(nextContent);
