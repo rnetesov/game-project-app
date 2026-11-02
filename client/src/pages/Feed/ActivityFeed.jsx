@@ -297,7 +297,7 @@ export default function ActivityFeed() {
     {error && <div className="feed-error">{error}</div>}
     {loading ? <div className="feed-state">Загружаем публикации...</div> : posts.length === 0 ? <div className="feed-empty"><MessageSquare size={28} /><strong>Пока здесь тихо</strong><span>Стань первым, кто поделится новостью!</span></div> : <div className="feed-posts">
       {posts.map(post => <article className="feed-post" key={post.id}>
-        <div className="feed-post-head"><Avatar author={post.author} /><div className="feed-author"><Link to={post.authorId === user?.id ? '/profile' : `/profile?user=${encodeURIComponent(post.author.username)}`}>{post.author.username}</Link><time>{formatDate(post.createdAt)}</time></div>
+        <div className="feed-post-head"><Avatar author={post.author} /><div className="feed-author"><Link to={post.authorId === user?.id ? '/profile' : `/profile?user=${encodeURIComponent(post.author.username)}`}>{post.author.username}</Link><time>{formatDate(post.createdAt)}{post.updatedAt && new Date(post.updatedAt) > new Date(post.createdAt) ? ' · изменено' : ''}</time></div>
           {post.authorId === user?.id && <>
             {editingPostId !== post.id && <button className="feed-edit-trigger" onClick={() => setEditingPostId(post.id)} title="Редактировать публикацию"><Pencil size={15} /></button>}
             <button className="feed-delete" onClick={() => removePost(post.id)} title="Удалить публикацию"><Trash2 size={16} /></button>
