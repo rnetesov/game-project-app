@@ -29,6 +29,9 @@ const authToken = () => localStorage.getItem('gamehub_access_token');
 export function searchPlayers(q) { return request('/friends/search?q=' + encodeURIComponent(q), { token: authToken() }); }
 export function getFriends() { return request('/friends', { token: authToken() }); }
 export function getFriendRequests() { return request('/friends/requests', { token: authToken() }); }
+export function getSentFriendRequests() { return request('/friends/requests/sent', { token: authToken() }); }
+export function getFriendshipStatus(userId) { return request('/friends/' + encodeURIComponent(userId) + '/relationship', { token: authToken() }); }
+export function cancelFriendRequest(id) { return request('/friends/requests/' + encodeURIComponent(id), { method: 'DELETE', token: authToken() }); }
 export function sendFriendRequest(userId) { return request('/friends/requests', { method: 'POST', token: authToken(), body: JSON.stringify({ userId }) }); }
 export function respondFriendRequest(id, action) { return request('/friends/requests/' + id, { method: 'PATCH', token: authToken(), body: JSON.stringify({ action }) }); }
 export function removeFriend(userId) { return request('/friends/' + userId, { method: 'DELETE', token: authToken() }); }
