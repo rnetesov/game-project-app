@@ -1,10 +1,11 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 async function request(path, options = {}) {
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const response = await fetch(API_URL + path, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...(options.token ? { Authorization: 'Bearer ' + options.token } : {}),
       ...options.headers,
     },
@@ -38,8 +39,21 @@ export function getPosts({ cursor, limit = 10 } = {}) {
   if (cursor) params.set('cursor', cursor);
   return request('/posts?' + params.toString(), { token: authToken() });
 }
-export function createPost(content) {
-  return request('/posts', { method: 'POST', token: authToken(), body: JSON.stringify({ content }) });
+export function createPost(content, images = []) {
+  if (!images.length) {
+    return request('/posts', { method: 'POST', token: authToken(), body: JSON.stringify({ content }) });
+  }
+  const formData = new FormData();
+  formData.append('content', content);
+  images.forEach(image => formData.append('images', image, image.name || 'screenshot.png'));
+  return request('/posts', { method: 'POST', token: authToken(), body: formData });
+}
+
+export function getAssetUrl(path) {
+  if (!path) return '';
+  if (/^https?:\\/\\//i.test(path)) return path;
+  const apiOrigin = API_URL.replace(/\\/api\\/?$/, '');
+  return new URL(path, apiOrigin + '/').toString();
 }
 export function deletePost(id) {
   return request('/posts/' + encodeURIComponent(id), { method: 'DELETE', token: authToken() });
