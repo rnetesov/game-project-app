@@ -9,6 +9,7 @@ import profileRoutes from './routes/profile.routes.js';
 import friendsRoutes from './routes/friends.routes.js';
 import postsRoutes from './routes/posts.routes.js';
 import notificationsRoutes from './routes/notifications.routes.js';
+import conversationsRoutes from './routes/conversations.routes.js';
 
 const app = express();
 app.use(helmet());
@@ -30,9 +31,10 @@ app.use('/api/profiles', profileRoutes);
 app.use('/api/friends', friendsRoutes);
 app.use('/api/posts', postsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/conversations', conversationsRoutes);
 
 app.use((req, res) => {
-  res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
+  res.status(404).json({ success: false, message: 'Route not found: ' + req.method + ' ' + req.originalUrl });
 });
 
 app.use((err, _req, res, _next) => {
