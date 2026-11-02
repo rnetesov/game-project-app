@@ -251,10 +251,9 @@ export async function markConversationRead(req, res, next) {
     if (!result.count) {
       return res.status(404).json({ success: false, message: 'Диалог не найден' });
     }
-    await prisma.notification.updateMany({
-      where: { recipientId: req.user.id, conversationId: req.params.id, readAt: null },
-      data: { readAt: now },
-    });
+    // Reading the chat updates message unread state only.
+    // Message notifications stay unread until the user opens them in the notification panel
+    // or explicitly marks all notifications as read.
     res.json({ success: true });
   } catch (error) {
     next(error);
