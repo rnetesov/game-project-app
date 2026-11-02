@@ -1,9 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   Bold, Italic, Underline, List, ListOrdered, Heading2,
   Link2, Pilcrow, RemoveFormatting, Undo2, Redo2,
 } from 'lucide-react';
-import { serializeRichDocument } from './richContent.jsx';
+import { richContentToEditorHtml, serializeRichDocument } from './richContent.jsx';
 
 function ToolbarButton({ label, icon: Icon, onClick }) {
   return (
@@ -20,7 +20,11 @@ function ToolbarButton({ label, icon: Icon, onClick }) {
   );
 }
 
-export default function RichTextEditor({ editorRef, onChange, onImagePaste, textLength }) {
+export default function RichTextEditor({ editorRef, onChange, onImagePaste, textLength, initialContent = '' }) {
+  useEffect(() => {
+    if (editorRef.current) editorRef.current.innerHTML = richContentToEditorHtml(initialContent);
+  }, [editorRef, initialContent]);
+
   const syncContent = useCallback(() => {
     const result = serializeRichDocument(editorRef.current);
     onChange(result.content, result.textLength);
