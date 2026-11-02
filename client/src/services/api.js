@@ -44,3 +44,16 @@ export function createPost(content) {
 export function deletePost(id) {
   return request(`/posts/${encodeURIComponent(id)}`, { method: 'DELETE', token: authToken() });
 }
+
+export function togglePostLike(id) {
+  return request(`/posts/${encodeURIComponent(id)}/like`, { method: 'PUT', token: authToken() });
+}
+export function getPostComments(id) {
+  return request(`/posts/${encodeURIComponent(id)}/comments`, { token: authToken() });
+}
+export function createPostComment(id, content) {
+  return request(`/posts/${encodeURIComponent(id)}/comments`, { method: 'POST', token: authToken(), body: JSON.stringify({ content }) });
+}
+export function deletePostComment(postId, commentId) {
+  return request(`/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`, { method: 'DELETE', token: authToken() });
+}
