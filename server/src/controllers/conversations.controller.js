@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
+import { createNotification } from '../utils/notifications.js';
 
 const userSelect = {
   id: true,
@@ -191,6 +192,14 @@ export async function sendMessage(req, res, next) {
       return res.status(404).json({ success: false, message: 'Диалог не найден' });
     }
 
+    const recipient = await prisma.conversationMember.findFirst({
+      where: { conversationId: req.params.id, userId: { not: req.user.id } },
+      select: { userId: true },
+    });
+    if (!recipient) {
+      return res.status(404).json({ success: false, message: 'Получатель диалога не найден' });
+    }
+
     const now = new Date();
     const message = await prisma.$transaction(async tx => {
       const created = await tx.message.create({
@@ -219,6 +228,13 @@ export async function sendMessage(req, res, next) {
       return created;
     });
 
+    await createNotification({
+      type: 'MESSAGE',
+      recipientId: recipient.userId,
+      actorId: req.user.id,
+      conversationId: req.params.id,
+    });
+
     res.status(201).json({ success: true, message });
   } catch (error) {
     next(error);
@@ -227,13 +243,18 @@ export async function sendMessage(req, res, next) {
 
 export async function markConversationRead(req, res, next) {
   try {
+    const now = new Date();
     const result = await prisma.conversationMember.updateMany({
       where: { conversationId: req.params.id, userId: req.user.id },
-      data: { lastReadAt: new Date() },
+      data: { lastReadAt: now },
     });
     if (!result.count) {
       return res.status(404).json({ success: false, message: 'Диалог не найден' });
     }
+    await prisma.notification.updateMany({
+      where: { recipientId: req.user.id, conversationId: req.params.id, readAt: null },
+      data: { readAt: now },
+    });
     res.json({ success: true });
   } catch (error) {
     next(error);

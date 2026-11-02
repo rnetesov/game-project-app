@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 function notificationText(type) {
   switch (type) {
     case 'COMMENT': return 'прокомментировал вашу публикацию';
+    case 'MESSAGE': return 'отправил вам сообщение';
     case 'LIKE': return 'поставил лайк вашей публикации';
     case 'FRIEND_REQUEST': return 'отправил заявку в друзья';
     case 'FRIEND_ACCEPTED': return 'принял вашу заявку в друзья';
@@ -23,6 +24,7 @@ function notificationText(type) {
 function notificationTitle(type) {
   switch (type) {
     case 'COMMENT': return 'Новый комментарий';
+    case 'MESSAGE': return 'Новое сообщение';
     case 'LIKE': return 'Новый лайк';
     case 'FRIEND_REQUEST': return 'Заявка в друзья';
     case 'FRIEND_ACCEPTED': return 'Новая дружба';
@@ -34,6 +36,7 @@ function NotificationIcon({ type, size = 18 }) {
   const props = { size, strokeWidth: 2 };
   switch (type) {
     case 'COMMENT': return <MessageCircle {...props} />;
+    case 'MESSAGE': return <MessageCircle {...props} />;
     case 'LIKE': return <Heart {...props} />;
     case 'FRIEND_REQUEST': return <UserPlus {...props} />;
     case 'FRIEND_ACCEPTED': return <Users {...props} />;
@@ -41,8 +44,11 @@ function NotificationIcon({ type, size = 18 }) {
   }
 }
 
-function notificationTarget(type) {
-  return type === 'FRIEND_REQUEST' || type === 'FRIEND_ACCEPTED' ? '/friends' : '/feed';
+function notificationTarget(notification) {
+  if (notification.type === 'MESSAGE' && notification.conversationId) {
+    return '/messages?conversation=' + encodeURIComponent(notification.conversationId);
+  }
+  return notification.type === 'FRIEND_REQUEST' || notification.type === 'FRIEND_ACCEPTED' ? '/friends' : '/feed';
 }
 
 function formatNotificationDate(value) {
@@ -124,7 +130,7 @@ export default function MainLayout() {
     } catch {
       setNotificationsError('Не удалось отметить уведомление прочитанным');
     }
-    navigate(notificationTarget(notification.type));
+    navigate(notificationTarget(notification));
   }, [closeToast, navigate]);
 
   const announceNotification = useCallback((notification) => {

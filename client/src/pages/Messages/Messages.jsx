@@ -43,6 +43,8 @@ export default function Messages() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get('conversation') || '';
+  const requestedUserId = searchParams.get('userId') || '';
+  const handledProfileUserId = useRef('');
   const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);
   const [friends, setFriends] = useState([]);
@@ -81,6 +83,21 @@ export default function Messages() {
     const timer = window.setInterval(loadConversations, 5000);
     return () => window.clearInterval(timer);
   }, [loadConversations]);
+
+  useEffect(() => {
+    if (!requestedUserId || selectedId || handledProfileUserId.current === requestedUserId) return;
+    handledProfileUserId.current = requestedUserId;
+
+    openConversation(requestedUserId)
+      .then(async data => {
+        setSearchParams({ conversation: data.conversation.id }, { replace: true });
+        await loadConversations();
+      })
+      .catch(err => {
+        setError(err.message || 'Не удалось открыть переписку с этим пользователем');
+        setSearchParams({}, { replace: true });
+      });
+  }, [requestedUserId, selectedId, setSearchParams, loadConversations]);
 
   useEffect(() => {
     if (!showFriends || friendsLoaded) return;
