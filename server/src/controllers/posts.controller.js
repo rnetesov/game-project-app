@@ -56,6 +56,7 @@ const postSelect = {
   content: true,
   authorId: true,
   createdAt: true,
+  updatedAt: true,
   author: { select: { id: true, username: true, avatarUrl: true } },
   images: { select: { id: true, url: true, createdAt: true }, orderBy: { createdAt: 'asc' } },
   _count: { select: { likes: true, comments: true } },
