@@ -95,6 +95,25 @@ export function deletePostComment(postId, commentId) {
   return request('/posts/' + encodeURIComponent(postId) + '/comments/' + encodeURIComponent(commentId), { method: 'DELETE', token: authToken() });
 }
 
+export function getGames(query = '') {
+  const params = new URLSearchParams();
+  if (query.trim()) params.set('q', query.trim());
+  return request('/games' + (params.toString() ? '?' + params.toString() : ''), { token: authToken() });
+}
+export function getUserGameLibrary(username) {
+  return request('/games/library/' + encodeURIComponent(username), { token: authToken() });
+}
+export function setGameLibraryStatus(gameId, status) {
+  return request('/games/' + encodeURIComponent(gameId) + '/library', {
+    method: 'PUT', token: authToken(), body: JSON.stringify({ status }),
+  });
+}
+export function removeGameFromLibrary(gameId) {
+  return request('/games/' + encodeURIComponent(gameId) + '/library', {
+    method: 'DELETE', token: authToken(),
+  });
+}
+
 export function getNotifications(limit = 30) {
   return request('/notifications?limit=' + limit, { token: authToken() });
 }
