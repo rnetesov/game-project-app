@@ -14,35 +14,46 @@ const userSelect = {
 
 const conversationInclude = {
   members: { include: { user: { select: userSelect } } },
-  messages: {
-    take: 1,
-    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    include: { sender: { select: userSelect } },
-  },
 };
 
 async function getMembership(conversationId, userId) {
   return prisma.conversationMember.findUnique({
     where: { conversationId_userId: { conversationId, userId } },
-    select: { id: true, conversationId: true, userId: true, lastReadAt: true },
+    select: { id: true, conversationId: true, userId: true, lastReadAt: true, clearedAt: true },
   });
 }
 
 async function shapeConversation(membership, userId) {
   const conversation = membership.conversation;
   const otherMember = conversation.members.find(member => member.userId !== userId);
-  const unreadCount = await prisma.message.count({
-    where: {
-      conversationId: conversation.id,
-      senderId: { not: userId },
-      ...(membership.lastReadAt ? { createdAt: { gt: membership.lastReadAt } } : {}),
-    },
-  });
+  const readBoundary = [membership.lastReadAt, membership.clearedAt]
+    .filter(Boolean)
+    .reduce((latest, value) => (!latest || value > latest ? value : latest), null);
+
+  const [unreadCount, lastMessage] = await Promise.all([
+    prisma.message.count({
+      where: {
+        conversationId: conversation.id,
+        senderId: { not: userId },
+        deletedAt: null,
+        ...(readBoundary ? { createdAt: { gt: readBoundary } } : {}),
+      },
+    }),
+    prisma.message.findFirst({
+      where: {
+        conversationId: conversation.id,
+        ...(membership.clearedAt ? { createdAt: { gt: membership.clearedAt } } : {}),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { id: true, content: true, senderId: true, createdAt: true, deletedAt: true },
+    }),
+  ]);
 
   return {
     id: conversation.id,
     otherUser: otherMember?.user || null,
-    lastMessage: conversation.messages[0] || null,
+    lastMessage: lastMessage || null,
+    historyClearedAt: membership.clearedAt || null,
     unreadCount,
     updatedAt: conversation.updatedAt,
   };
@@ -143,7 +154,11 @@ export async function listMessages(req, res, next) {
 
     if (parsed.data.before) {
       const cursorExists = await prisma.message.findFirst({
-        where: { id: parsed.data.before, conversationId: req.params.id },
+        where: {
+          id: parsed.data.before,
+          conversationId: req.params.id,
+          ...(membership.clearedAt ? { createdAt: { gt: membership.clearedAt } } : {}),
+        },
         select: { id: true },
       });
       if (!cursorExists) {
@@ -157,7 +172,10 @@ export async function listMessages(req, res, next) {
     });
 
     const rows = await prisma.message.findMany({
-      where: { conversationId: req.params.id },
+      where: {
+        conversationId: req.params.id,
+        ...(membership.clearedAt ? { createdAt: { gt: membership.clearedAt } } : {}),
+      },
       ...(parsed.data.before ? { cursor: { id: parsed.data.before }, skip: 1 } : {}),
       take: parsed.data.limit + 1,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -166,6 +184,7 @@ export async function listMessages(req, res, next) {
         content: true,
         senderId: true,
         createdAt: true,
+        deletedAt: true,
         sender: { select: userSelect },
         attachments: {
           select: { id: true, originalName: true, mimeType: true, size: true, createdAt: true },
@@ -288,6 +307,75 @@ export async function sendMessage(req, res, next) {
   }
 }
 
+export async function deleteMessage(req, res, next) {
+  try {
+    const membership = await getMembership(req.params.id, req.user.id);
+    if (!membership) {
+      return res.status(404).json({ success: false, message: 'Диалог не найден' });
+    }
+
+    const message = await prisma.message.findFirst({
+      where: {
+        id: req.params.messageId,
+        conversationId: req.params.id,
+        senderId: req.user.id,
+        ...(membership.clearedAt ? { createdAt: { gt: membership.clearedAt } } : {}),
+      },
+      select: {
+        id: true,
+        deletedAt: true,
+        attachments: { select: { storageName: true } },
+      },
+    });
+    if (!message) {
+      return res.status(404).json({ success: false, message: 'Сообщение не найдено или его нельзя удалить' });
+    }
+
+    if (message.deletedAt) {
+      return res.json({ success: true, message: { id: message.id, deletedAt: message.deletedAt } });
+    }
+
+    const deletedAt = new Date();
+    const storageNames = message.attachments.map(attachment => attachment.storageName);
+
+    await prisma.$transaction(async tx => {
+      await tx.message.update({
+        where: { id: message.id },
+        data: { content: '', deletedAt },
+      });
+      await tx.messageAttachment.deleteMany({ where: { messageId: message.id } });
+      await tx.conversation.update({
+        where: { id: req.params.id },
+        data: { updatedAt: deletedAt },
+      });
+    });
+
+    await Promise.all(storageNames.map(deleteMessageAttachmentFile));
+    res.json({ success: true, message: { id: message.id, deletedAt } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function clearConversationHistory(req, res, next) {
+  try {
+    const membership = await getMembership(req.params.id, req.user.id);
+    if (!membership) {
+      return res.status(404).json({ success: false, message: 'Диалог не найден' });
+    }
+
+    const clearedAt = new Date();
+    await prisma.conversationMember.update({
+      where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
+      data: { clearedAt, lastReadAt: clearedAt },
+    });
+
+    res.json({ success: true, clearedAt });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function downloadMessageAttachment(req, res, next) {
   try {
     const membership = await getMembership(req.params.id, req.user.id);
@@ -298,7 +386,11 @@ export async function downloadMessageAttachment(req, res, next) {
     const attachment = await prisma.messageAttachment.findFirst({
       where: {
         id: req.params.attachmentId,
-        message: { conversationId: req.params.id },
+        message: {
+          conversationId: req.params.id,
+          deletedAt: null,
+          ...(membership.clearedAt ? { createdAt: { gt: membership.clearedAt } } : {}),
+        },
       },
       select: { storageName: true, originalName: true, mimeType: true },
     });

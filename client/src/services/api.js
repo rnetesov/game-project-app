@@ -155,6 +155,16 @@ export function getConversationMessages(id, options = {}) {
   if (options.before) params.set('before', options.before);
   return request('/conversations/' + encodeURIComponent(id) + '/messages?' + params.toString(), { token: authToken() });
 }
+export function deleteConversationMessage(conversationId, messageId) {
+  return request('/conversations/' + encodeURIComponent(conversationId) + '/messages/' + encodeURIComponent(messageId), {
+    method: 'DELETE', token: authToken(),
+  });
+}
+export function clearConversationHistory(conversationId) {
+  return request('/conversations/' + encodeURIComponent(conversationId) + '/history', {
+    method: 'DELETE', token: authToken(),
+  });
+}
 export function sendConversationMessage(id, content, files = []) {
   const url = '/conversations/' + encodeURIComponent(id) + '/messages';
   if (!files.length) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MessageCircle, Plus, Send, Users, ArrowDown, LoaderCircle, Search, Check, CheckCheck, Paperclip, X, FileText, Download } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { MessageCircle, Plus, Send, Users, ArrowDown, LoaderCircle, Search, Check, CheckCheck, Paperclip, X, FileText, Download, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import FriendAction from '../../components/FriendAction.jsx';
 import {
@@ -11,6 +11,8 @@ import {
   openConversation,
   sendConversationMessage,
   getConversationAttachmentBlob,
+  deleteConversationMessage,
+  clearConversationHistory,
   searchPlayers,
 } from '../../services/api.js';
 import './messages.css';
@@ -140,6 +142,8 @@ export default function Messages() {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [clearingHistory, setClearingHistory] = useState(false);
+  const [deletingMessageId, setDeletingMessageId] = useState('');
   const listRef = useRef(null);
   const bottomRef = useRef(null);
   const shouldStickToBottom = useRef(true);
@@ -314,6 +318,45 @@ export default function Messages() {
   }
 
 
+  async function deleteMessage(message) {
+    if (!selectedId || !message || message.senderId !== user?.id || message.deletedAt || deletingMessageId) return;
+    if (!window.confirm('Удалить это сообщение у всех участников переписки?')) return;
+
+    setDeletingMessageId(message.id);
+    setError('');
+    try {
+      const result = await deleteConversationMessage(selectedId, message.id);
+      setMessages(current => current.map(item => item.id === message.id
+        ? { ...item, content: '', attachments: [], deletedAt: result.message?.deletedAt || new Date().toISOString(), readAt: null }
+        : item));
+      await loadConversations();
+    } catch (err) {
+      setError(err.message || 'Не удалось удалить сообщение');
+    } finally {
+      setDeletingMessageId('');
+    }
+  }
+
+  async function clearHistory() {
+    if (!selectedId || clearingHistory) return;
+    if (!window.confirm('Очистить историю этой переписки только у себя? Собеседник сохранит свои сообщения.')) return;
+
+    setClearingHistory(true);
+    setError('');
+    try {
+      await clearConversationHistory(selectedId);
+      firstPageLoad.current = true;
+      shouldStickToBottom.current = true;
+      setMessages([]);
+      setNextCursor(null);
+      await loadConversations();
+    } catch (err) {
+      setError(err.message || 'Не удалось очистить историю переписки');
+    } finally {
+      setClearingHistory(false);
+    }
+  }
+
   function addFiles(fileList) {
     const incoming = Array.from(fileList || []);
     if (!incoming.length) return;
@@ -414,10 +457,10 @@ export default function Messages() {
                 ? <div className="messages-friend-list">
                     {peopleToShow.map(person => (
                       <div key={person.id} className="messages-friend-option">
-                        <Link className="messages-friend-profile" to={'/profile?user=' + encodeURIComponent(person.username)}>
+                        <div className="messages-friend-profile">
                           <Avatar user={person} small />
                           <span><strong>{person.username}</strong><small>{person.relationship === 'FRIENDS' ? 'Уже в друзьях' : person.online ? 'В сети' : 'Игрок GameHub'}</small></span>
-                        </Link>
+                        </div>
                         {person.relationship !== 'FRIENDS' && <FriendAction userId={person.id} relationship={person.relationship} requestId={person.requestId} compact/>}
                         <button type="button" className="messages-friend-message" onClick={() => startConversation(person)} title={'Написать ' + person.username} aria-label={'Написать ' + person.username}>
                           <MessageCircle size={16} />
@@ -434,10 +477,10 @@ export default function Messages() {
                     <div className="messages-friend-list">
                       {friends.map(friend => (
                         <div key={friend.id} className="messages-friend-option">
-                          <Link className="messages-friend-profile" to={'/profile?user=' + encodeURIComponent(friend.username)}>
+                          <div className="messages-friend-profile">
                             <Avatar user={friend} small />
                             <span><strong>{friend.username}</strong><small>{friend.online ? 'В сети' : 'Не в сети'}</small></span>
-                          </Link>
+                          </div>
                           <button type="button" className="messages-friend-message" onClick={() => startConversation(friend)} title={'Написать ' + friend.username} aria-label={'Написать ' + friend.username}>
                             <MessageCircle size={16} />
                           </button>
@@ -459,10 +502,10 @@ export default function Messages() {
                   key={item.id}
                   className={'messages-conversation-item' + (item.id === selectedId ? ' active' : '')}
                 >
-                  <Link className="messages-conversation-profile" to={'/profile?user=' + encodeURIComponent(item.otherUser?.username || '')}>
+                  <div className="messages-conversation-profile">
                     <Avatar user={item.otherUser} />
                     <strong>{item.otherUser?.username || 'Игрок'}</strong>
-                  </Link>
+                  </div>
                   <button
                     type="button"
                     className="messages-conversation-open"
@@ -470,8 +513,10 @@ export default function Messages() {
                     aria-label={'Открыть переписку с ' + (item.otherUser?.username || 'игроком')}
                   >
                     <small>{item.lastMessage
-                      ? (item.lastMessage.senderId === user?.id ? 'Вы: ' : '') + item.lastMessage.content
-                      : 'Начните общение'}</small>
+                      ? (item.lastMessage.deletedAt
+                        ? 'Сообщение удалено'
+                        : (item.lastMessage.senderId === user?.id ? 'Вы: ' : '') + item.lastMessage.content)
+                      : item.historyClearedAt ? 'История очищена' : 'Начните общение'}</small>
                   </button>
                   <span className="messages-conversation-meta">
                     <time>{formatDay(item.lastMessage?.createdAt || item.updatedAt)}</time>
@@ -486,10 +531,20 @@ export default function Messages() {
           {selectedConversation ? (
             <>
               <header className="messages-chat-header">
-                <Link className="messages-chat-profile" to={'/profile?user=' + encodeURIComponent(selectedConversation.otherUser?.username || '')}>
+                <div className="messages-chat-profile">
                   <Avatar user={selectedConversation.otherUser} small />
-                  <span><strong>{selectedConversation.otherUser?.username || 'Игрок'}</strong><small>Открыть профиль · Личная переписка</small></span>
-                </Link>
+                  <span><strong>{selectedConversation.otherUser?.username || 'Игрок'}</strong><small>Личная переписка</small></span>
+                </div>
+                <button
+                  type="button"
+                  className="messages-clear-history"
+                  onClick={clearHistory}
+                  disabled={clearingHistory}
+                  title="Очистить историю у себя"
+                  aria-label="Очистить историю у себя"
+                >
+                  {clearingHistory ? <LoaderCircle size={15} className="messages-spin" /> : <Trash2 size={15} />}
+                </button>
               </header>
               <div className="messages-history" ref={listRef}>
                 {nextCursor && <button className="messages-load-older" onClick={loadOlder} disabled={loadingOlder}>
@@ -501,18 +556,36 @@ export default function Messages() {
                   return <article key={message.id} className={'messages-bubble-row' + (own ? ' own' : '')}>
                     {!own && <Avatar user={message.sender} small />}
                     <div className="messages-bubble">
-                      {!own && <Link className="messages-sender-profile" to={'/profile?user=' + encodeURIComponent(message.sender?.username || '')}>{message.sender?.username}</Link>}
-                      {message.content && <p>{message.content}</p>}
-                      {message.attachments?.length > 0 && (
-                        <div className="messages-attachments">
-                          {message.attachments.map(attachment => (
-                            <MessageAttachment key={attachment.id} conversationId={selectedId} attachment={attachment} />
-                          ))}
-                        </div>
+                      {!own && <strong className="messages-sender-name">{message.sender?.username}</strong>}
+                      {message.deletedAt ? (
+                        <p className="messages-deleted-message">Сообщение удалено</p>
+                      ) : (
+                        <>
+                          {message.content && <p>{message.content}</p>}
+                          {message.attachments?.length > 0 && (
+                            <div className="messages-attachments">
+                              {message.attachments.map(attachment => (
+                                <MessageAttachment key={attachment.id} conversationId={selectedId} attachment={attachment} />
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
                       <div className="messages-bubble-footer">
+                        {own && !message.deletedAt && (
+                          <button
+                            type="button"
+                            className="messages-delete-message"
+                            onClick={() => deleteMessage(message)}
+                            disabled={deletingMessageId === message.id}
+                            title="Удалить сообщение"
+                            aria-label="Удалить сообщение"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                         <time>{formatTime(message.createdAt)}</time>
-                        {own && (
+                        {own && !message.deletedAt && (
                           <span
                             className={'messages-read-receipt' + (message.readAt ? ' is-read' : '')}
                             title={message.readAt ? 'Прочитано собеседником' : 'Отправлено, ожидает прочтения'}
@@ -525,7 +598,7 @@ export default function Messages() {
                       </div>
                     </div>
                   </article>;
-                }) : <div className="messages-start-hint"><MessageCircle size={25}/><strong>Начало переписки</strong><span>Отправь первое сообщение.</span></div>}
+                }) : <div className="messages-start-hint"><MessageCircle size={25}/><strong>{selectedConversation.historyClearedAt ? 'История очищена' : 'Начало переписки'}</strong><span>{selectedConversation.historyClearedAt ? 'Старые сообщения удалены только из твоей истории.' : 'Отправь первое сообщение.'}</span></div>}
                 <div ref={bottomRef} />
               </div>
               <form

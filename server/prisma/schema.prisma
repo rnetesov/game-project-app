@@ -129,6 +129,7 @@ model ConversationMember {
   conversationId String
   userId         String
   lastReadAt     DateTime?
+  clearedAt      DateTime?
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -141,6 +142,7 @@ model Message {
   conversationId String
   senderId       String
   createdAt      DateTime     @default(now())
+  deletedAt      DateTime?
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
   attachments    MessageAttachment[]
