@@ -201,6 +201,7 @@ export async function sendMessage(req, res, next) {
     content: z.string().trim().max(2000, 'Максимум 2000 символов').default(''),
   }).safeParse(req.body || {});
   if (parsed.success && !parsed.data.content && files.length === 0) {
+    await req.cleanupMessageFiles?.();
     return res.status(400).json({ success: false, message: 'Добавь текст или хотя бы одно вложение' });
   }
   if (files.length > 5) {
@@ -208,6 +209,7 @@ export async function sendMessage(req, res, next) {
     return res.status(400).json({ success: false, message: 'Можно отправить не более 5 файлов за одно сообщение' });
   }
   if (!parsed.success) {
+    await req.cleanupMessageFiles?.();
     return res.status(400).json({
       success: false,
       message: parsed.error.issues[0]?.message || 'Некорректное сообщение',
