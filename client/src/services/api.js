@@ -95,10 +95,14 @@ export function deletePostComment(postId, commentId) {
   return request('/posts/' + encodeURIComponent(postId) + '/comments/' + encodeURIComponent(commentId), { method: 'DELETE', token: authToken() });
 }
 
-export function getGames(query = '') {
+export function getGames(query = '', genre = '') {
   const params = new URLSearchParams();
   if (query.trim()) params.set('q', query.trim());
+  if (genre) params.set('genre', genre);
   return request('/games' + (params.toString() ? '?' + params.toString() : ''), { token: authToken() });
+}
+export function addGameToCatalog(payload) {
+  return request('/games', { method: 'POST', token: authToken(), body: JSON.stringify(payload) });
 }
 export function getUserGameLibrary(username) {
   return request('/games/library/' + encodeURIComponent(username), { token: authToken() });
