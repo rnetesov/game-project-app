@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Check, Edit3, Gamepad2, MessageCircle, ShieldCheck, UserPlus, Users, X } from 'lucide-react';
+import { Check, Edit3, Gamepad2, MessageCircle, ShieldCheck, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getProfile, getUserGameLibrary, getAssetUrl, searchPlayers, sendFriendRequest, updateMyProfile } from '../../services/api.js';
+import { getProfile, getUserGameLibrary, getFriendshipStatus, updateMyProfile, getAssetUrl } from '../../services/api.js';
+import FriendAction from '../../components/FriendAction.jsx';
 import '../Library/Library.css';
 
 function initials(name = '') {
@@ -24,48 +25,36 @@ export default function Profile() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [friendActionBusy, setFriendActionBusy] = useState(false);
-  const [friendship, setFriendship] = useState('NONE');
+  const [friendship, setFriendship] = useState(null);
   const [libraryEntries, setLibraryEntries] = useState([]);
   const [libraryCounts, setLibraryCounts] = useState({ total: 0, PLAYING: 0, WANT_TO_PLAY: 0, COMPLETED: 0 });
 
   useEffect(() => {
     if (!viewedUsername) return;
     let cancelled = false;
-    Promise.all([getProfile(viewedUsername), getUserGameLibrary(viewedUsername), searchPlayers(viewedUsername)])
-      .then(([profileResult, libraryResult, playersResult]) => {
+    setFriendship(null);
+    Promise.all([getProfile(viewedUsername), getUserGameLibrary(viewedUsername)])
+      .then(async ([profileResult, libraryResult]) => {
         if (cancelled) return;
         const data = profileResult.user;
-        const player = (playersResult.users || []).find(item => item.username.toLowerCase() === viewedUsername.toLowerCase());
         setProfile(data);
-        setFriendship(player?.relationship || 'NONE');
         setUsername(data.username);
         setBio(data.bio || '');
         setAvatarUrl(data.avatarUrl || '');
         setLibraryEntries(libraryResult.entries || []);
         setLibraryCounts(libraryResult.counts || { total: 0, PLAYING: 0, WANT_TO_PLAY: 0, COMPLETED: 0 });
+        if (data.id !== user?.id) {
+          const relationship = await getFriendshipStatus(data.id);
+          if (!cancelled) setFriendship(relationship);
+        } else {
+          setFriendship(null);
+        }
       })
       .catch(err => {
         if (!cancelled) setError(err.message);
       });
     return () => { cancelled = true; };
-  }, [viewedUsername]);
-
-  async function addOrAcceptFriend() {
-    if (!profile?.id || friendActionBusy || friendship === 'FRIENDS' || friendship === 'SENT') return;
-    setFriendActionBusy(true);
-    setError('');
-    setMessage('');
-    try {
-      const result = await sendFriendRequest(profile.id);
-      setFriendship(result.request?.status === 'ACCEPTED' || result.message === 'Заявка принята' ? 'FRIENDS' : 'SENT');
-      setMessage(result.message || 'Заявка отправлена');
-    } catch (err) {
-      setError(err.message || 'Не удалось обновить список друзей');
-    } finally {
-      setFriendActionBusy(false);
-    }
-  }
+  }, [viewedUsername, user?.id]);
 
   async function save(event) {
     event.preventDefault();
@@ -95,13 +84,9 @@ export default function Profile() {
       <div className="profile-title-row">
         <div><div className="eyebrow">ТВОЯ ИГРОВАЯ ЛИЧНОСТЬ</div><h1>{isOwnProfile ? 'Профиль игрока' : 'Профиль пользователя'}</h1><p>{isOwnProfile ? 'Управляй своим профилем и показывай достижения.' : 'Информация об игроке GameHub.'}</p></div>
         {isOwnProfile && !editing && <button className="primary-button" onClick={() => { setEditing(true); setMessage(''); setError(''); }}><Edit3 size={16}/> Редактировать</button>}
-        {!isOwnProfile && isViewedProfileLoaded && <div className="profile-actions">
+        {!isOwnProfile && isViewedProfileLoaded && <div className="profile-social-actions">
+          {friendship && <FriendAction userId={profile.id} relationship={friendship.relationship} requestId={friendship.requestId}/>}
           <button className="primary-button" onClick={() => navigate('/messages?userId=' + encodeURIComponent(profile.id))}><MessageCircle size={16}/> Написать сообщение</button>
-          {friendship === 'FRIENDS'
-            ? <span className="profile-friend-pill"><Users size={15}/> Вы друзья</span>
-            : <button className="profile-friend-button" onClick={addOrAcceptFriend} disabled={friendActionBusy || friendship === 'SENT'}>
-                <UserPlus size={15}/>{friendActionBusy ? 'Обновляем...' : friendship === 'SENT' ? 'Заявка отправлена' : friendship === 'RECEIVED' ? 'Принять заявку' : 'Добавить в друзья'}
-              </button>}
         </div>}
       </div>
 

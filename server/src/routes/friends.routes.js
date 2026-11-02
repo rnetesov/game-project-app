@@ -1,12 +1,15 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware.js';
-import { heartbeat, listFriends, listRequests, removeFriend, respondRequest, searchUsers, sendRequest } from '../controllers/friends.controller.js';
+import { cancelRequest, getRelationship, heartbeat, listFriends, listRequests, listSentRequests, removeFriend, respondRequest, searchUsers, sendRequest } from '../controllers/friends.controller.js';
 import { asyncHandler } from '../utils/async-handler.js';
 const router = Router();
 router.use(requireAuth);
 router.get('/search', asyncHandler(searchUsers));
 router.get('/', asyncHandler(listFriends));
 router.get('/requests', asyncHandler(listRequests));
+router.get('/requests/sent', asyncHandler(listSentRequests));
+router.delete('/requests/:id', asyncHandler(cancelRequest));
+router.get('/:userId/relationship', asyncHandler(getRelationship));
 router.post('/requests', asyncHandler(sendRequest));
 router.patch('/requests/:id', asyncHandler(respondRequest));
 router.delete('/:userId', asyncHandler(removeFriend));

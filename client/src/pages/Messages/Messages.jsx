@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { MessageCircle, Plus, Send, Users, ArrowDown, LoaderCircle, Search, Check, CheckCheck, Paperclip, X, FileText, Download } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import FriendAction from '../../components/FriendAction.jsx';
 import {
   getConversations,
   getConversationMessages,
@@ -417,6 +418,7 @@ export default function Messages() {
                           <Avatar user={person} small />
                           <span><strong>{person.username}</strong><small>{person.relationship === 'FRIENDS' ? 'Уже в друзьях' : person.online ? 'В сети' : 'Игрок GameHub'}</small></span>
                         </Link>
+                        {person.relationship !== 'FRIENDS' && <FriendAction userId={person.id} relationship={person.relationship} requestId={person.requestId} compact/>}
                         <button type="button" className="messages-friend-message" onClick={() => startConversation(person)} title={'Написать ' + person.username} aria-label={'Написать ' + person.username}>
                           <MessageCircle size={16} />
                         </button>
