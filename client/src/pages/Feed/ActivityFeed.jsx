@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageSquare, Send, Trash2, Newspaper, RefreshCw } from 'lucide-react';
-import { createPost, deletePost, getPosts } from '../../services/api.js';
+import { MessageSquare, Send, Trash2, Newspaper, RefreshCw, Heart } from 'lucide-react';
+import {
+  createPost, deletePost, getPosts, togglePostLike,
+  getPostComments, createPostComment, deletePostComment,
+} from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import './ActivityFeed.css';
 
@@ -22,6 +25,10 @@ export default function ActivityFeed() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState('');
+  const [expandedComments, setExpandedComments] = useState({});
+  const [comments, setComments] = useState({});
+  const [commentDrafts, setCommentDrafts] = useState({});
+  const [commentBusy, setCommentBusy] = useState({});
 
   const load = useCallback(async (nextCursor = null) => {
     if (nextCursor) setLoadingMore(true);
@@ -67,6 +74,64 @@ export default function ActivityFeed() {
     }
   }
 
+  async function handleLike(post) {
+    setCommentBusy(current => ({ ...current, [post.id]: true }));
+    try {
+      const result = await togglePostLike(post.id);
+      setPosts(current => current.map(item => item.id === post.id
+        ? { ...item, likedByMe: result.liked, _count: { ...item._count, likes: result.count } }
+        : item));
+    } catch (err) {
+      setError(err.message || 'Не удалось изменить реакцию');
+    } finally {
+      setCommentBusy(current => ({ ...current, [post.id]: false }));
+    }
+  }
+
+  async function toggleComments(postId) {
+    const opening = !expandedComments[postId];
+    setExpandedComments(current => ({ ...current, [postId]: opening }));
+    if (opening && !comments[postId]) {
+      try {
+        const data = await getPostComments(postId);
+        setComments(current => ({ ...current, [postId]: data.comments }));
+      } catch (err) {
+        setError(err.message || 'Не удалось загрузить комментарии');
+      }
+    }
+  }
+
+  async function submitComment(event, postId) {
+    event.preventDefault();
+    const text = (commentDrafts[postId] || '').trim();
+    if (!text || commentBusy[postId]) return;
+    setCommentBusy(current => ({ ...current, [postId]: true }));
+    try {
+      const data = await createPostComment(postId, text);
+      setComments(current => ({ ...current, [postId]: [...(current[postId] || []), data.comment] }));
+      setPosts(current => current.map(post => post.id === postId
+        ? { ...post, _count: { ...post._count, comments: (post._count?.comments || 0) + 1 } }
+        : post));
+      setCommentDrafts(current => ({ ...current, [postId]: '' }));
+    } catch (err) {
+      setError(err.message || 'Не удалось добавить комментарий');
+    } finally {
+      setCommentBusy(current => ({ ...current, [postId]: false }));
+    }
+  }
+
+  async function removeComment(postId, commentId) {
+    try {
+      await deletePostComment(postId, commentId);
+      setComments(current => ({ ...current, [postId]: current[postId].filter(comment => comment.id !== commentId) }));
+      setPosts(current => current.map(post => post.id === postId
+        ? { ...post, _count: { ...post._count, comments: Math.max(0, (post._count?.comments || 1) - 1) } }
+        : post));
+    } catch (err) {
+      setError(err.message || 'Не удалось удалить комментарий');
+    }
+  }
+
   return <main className="page-content feed-page">
     <div className="welcome-row">
       <div><div className="eyebrow">СООБЩЕСТВО GAMEHUB</div><h1>Лента активности</h1><p>Новости, мысли и игровые моменты сообщества</p></div>
@@ -87,6 +152,25 @@ export default function ActivityFeed() {
           {post.authorId === user?.id && <button className="feed-delete" onClick={() => removePost(post.id)} title="Удалить публикацию"><Trash2 size={16} /></button>}
         </div>
         <p className="feed-post-content">{post.content}</p>
+        <div className="feed-actions">
+          <button className={post.likedByMe ? 'feed-action is-liked' : 'feed-action'} onClick={() => handleLike(post)} disabled={commentBusy[post.id]}>
+            <Heart size={16} fill={post.likedByMe ? 'currentColor' : 'none'} /> Нравится <span>{post._count?.likes || 0}</span>
+          </button>
+          <button className="feed-action" onClick={() => toggleComments(post.id)}>
+            <MessageSquare size={16} /> Комментарии <span>{post._count?.comments || 0}</span>
+          </button>
+        </div>
+        {expandedComments[post.id] && <section className="feed-comments">
+          {(comments[post.id] || []).map(comment => <div className="feed-comment" key={comment.id}>
+            <Avatar author={comment.author} />
+            <div className="feed-comment-body"><div><Link to={comment.authorId === user?.id ? '/profile' : `/profile?user=${encodeURIComponent(comment.author.username)}`}>{comment.author.username}</Link><time>{formatDate(comment.createdAt)}</time></div><p>{comment.content}</p></div>
+            {comment.authorId === user?.id && <button className="feed-comment-delete" onClick={() => removeComment(post.id, comment.id)} title="Удалить комментарий"><Trash2 size={14} /></button>}
+          </div>)}
+          <form className="feed-comment-form" onSubmit={event => submitComment(event, post.id)}>
+            <input value={commentDrafts[post.id] || ''} onChange={event => setCommentDrafts(current => ({ ...current, [post.id]: event.target.value }))} maxLength={500} placeholder="Написать комментарий..." />
+            <button type="submit" disabled={!(commentDrafts[post.id] || '').trim() || commentBusy[post.id]}><Send size={15} /></button>
+          </form>
+        </section>}
       </article>)}
     </div>}
     {!loading && cursor && <button className="feed-more" onClick={() => load(cursor)} disabled={loadingMore}>{loadingMore ? 'Загружаем...' : 'Загрузить ещё'}</button>}
