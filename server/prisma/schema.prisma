@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  avatarUrl    String?
+  bio          String   @default("")
+  level        Int      @default(1)
+  xp           Int      @default(0)
+  lastSeenAt   DateTime @default(now())
+  sentRequests FriendRequest[] @relation("RequestSender")
+  receivedRequests FriendRequest[] @relation("RequestReceiver")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
+model FriendRequest {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  sender     User     @relation("RequestSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("RequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+  @@index([senderId, status])
+}
