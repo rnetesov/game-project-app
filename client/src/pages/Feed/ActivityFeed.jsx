@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  MessageSquare, Send, Trash2, Newspaper, RefreshCw, Heart,
+  MessageSquare, Send, Trash2, Newspaper, RefreshCw, Heart, Pencil,
   ImagePlus, X, ClipboardPaste,
 } from 'lucide-react';
 import {
@@ -10,6 +10,7 @@ import {
 } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import RichTextEditor from './RichTextEditor.jsx';
+import EditPostForm from './EditPostForm.jsx';
 import { renderPostContent } from './richContent.jsx';
 import './ActivityFeed.css';
 
@@ -35,6 +36,7 @@ export default function ActivityFeed() {
   const [attachments, setAttachments] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [lightboxImage, setLightboxImage] = useState('');
+  const [editingPostId, setEditingPostId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -296,8 +298,21 @@ export default function ActivityFeed() {
     {loading ? <div className="feed-state">Загружаем публикации...</div> : posts.length === 0 ? <div className="feed-empty"><MessageSquare size={28} /><strong>Пока здесь тихо</strong><span>Стань первым, кто поделится новостью!</span></div> : <div className="feed-posts">
       {posts.map(post => <article className="feed-post" key={post.id}>
         <div className="feed-post-head"><Avatar author={post.author} /><div className="feed-author"><Link to={post.authorId === user?.id ? '/profile' : `/profile?user=${encodeURIComponent(post.author.username)}`}>{post.author.username}</Link><time>{formatDate(post.createdAt)}</time></div>
-          {post.authorId === user?.id && <button className="feed-delete" onClick={() => removePost(post.id)} title="Удалить публикацию"><Trash2 size={16} /></button>}
+          {post.authorId === user?.id && <>
+            {editingPostId !== post.id && <button className="feed-edit-trigger" onClick={() => setEditingPostId(post.id)} title="Редактировать публикацию"><Pencil size={15} /></button>}
+            <button className="feed-delete" onClick={() => removePost(post.id)} title="Удалить публикацию"><Trash2 size={16} /></button>
+          </>}
         </div>
+        {editingPostId === post.id ? (
+          <EditPostForm
+            post={post}
+            onCancel={() => setEditingPostId(null)}
+            onSaved={updatedPost => {
+              setPosts(current => current.map(item => item.id === updatedPost.id ? updatedPost : item));
+              setEditingPostId(null);
+            }}
+          />
+        ) : <>
         {post.content && renderPostContent(post.content)}
         {post.images?.length > 0 && <div className={'feed-post-gallery count-' + Math.min(post.images.length, 4)}>
           {post.images.map((image, index) => <button type="button" className="feed-post-image" key={image.id} onClick={() => setLightboxImage(getAssetUrl(image.url))} aria-label="Открыть изображение">
@@ -312,6 +327,7 @@ export default function ActivityFeed() {
             <MessageSquare size={16} /> Комментарии <span>{post._count?.comments || 0}</span>
           </button>
         </div>
+        </>}
         {expandedComments[post.id] && <section className="feed-comments">
           {(comments[post.id] || []).map(comment => <div className="feed-comment" key={comment.id}>
             <Avatar author={comment.author} />
