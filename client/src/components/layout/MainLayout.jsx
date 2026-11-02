@@ -1,5 +1,5 @@
 import {
-  Bell, Search, LogOut, CheckCheck, MessageCircle, Heart,
+  Bell, Search, LogOut, CheckCheck, MessageCircle, Heart, Flame, Laugh, Eye, Frown,
   UserPlus, Users, X, MonitorCheck,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -15,6 +15,11 @@ function notificationText(type) {
     case 'COMMENT': return 'прокомментировал вашу публикацию';
     case 'MESSAGE': return 'отправил вам сообщение';
     case 'LIKE': return 'поставил лайк вашей публикации';
+    case 'REACTION_FIRE': return 'поставил реакцию 🔥 на вашу публикацию';
+    case 'REACTION_HEART': return 'поставил реакцию ❤️ на вашу публикацию';
+    case 'REACTION_LAUGH': return 'поставил реакцию 😂 на вашу публикацию';
+    case 'REACTION_WOW': return 'поставил реакцию 😮 на вашу публикацию';
+    case 'REACTION_SAD': return 'поставил реакцию 😢 на вашу публикацию';
     case 'FRIEND_REQUEST': return 'отправил заявку в друзья';
     case 'FRIEND_ACCEPTED': return 'принял вашу заявку в друзья';
     default: return 'оставил новое уведомление';
@@ -26,6 +31,11 @@ function notificationTitle(type) {
     case 'COMMENT': return 'Новый комментарий';
     case 'MESSAGE': return 'Новое сообщение';
     case 'LIKE': return 'Новый лайк';
+    case 'REACTION_FIRE': return 'Новая реакция: 🔥';
+    case 'REACTION_HEART': return 'Новая реакция: ❤️';
+    case 'REACTION_LAUGH': return 'Новая реакция: 😂';
+    case 'REACTION_WOW': return 'Новая реакция: 😮';
+    case 'REACTION_SAD': return 'Новая реакция: 😢';
     case 'FRIEND_REQUEST': return 'Заявка в друзья';
     case 'FRIEND_ACCEPTED': return 'Новая дружба';
     default: return 'Новое уведомление';
@@ -37,7 +47,12 @@ function NotificationIcon({ type, size = 18 }) {
   switch (type) {
     case 'COMMENT': return <MessageCircle {...props} />;
     case 'MESSAGE': return <MessageCircle {...props} />;
-    case 'LIKE': return <Heart {...props} />;
+    case 'LIKE':
+    case 'REACTION_HEART': return <Heart {...props} />;
+    case 'REACTION_FIRE': return <Flame {...props} />;
+    case 'REACTION_LAUGH': return <Laugh {...props} />;
+    case 'REACTION_WOW': return <Eye {...props} />;
+    case 'REACTION_SAD': return <Frown {...props} />;
     case 'FRIEND_REQUEST': return <UserPlus {...props} />;
     case 'FRIEND_ACCEPTED': return <Users {...props} />;
     default: return <Bell {...props} />;
@@ -47,6 +62,9 @@ function NotificationIcon({ type, size = 18 }) {
 function notificationTarget(notification) {
   if (notification.type === 'MESSAGE' && notification.conversationId) {
     return '/messages?conversation=' + encodeURIComponent(notification.conversationId);
+  }
+  if (notification.type.startsWith('REACTION_') && notification.postId) {
+    return '/feed?post=' + encodeURIComponent(notification.postId);
   }
   return notification.type === 'FRIEND_REQUEST' || notification.type === 'FRIEND_ACCEPTED' ? '/friends' : '/feed';
 }
