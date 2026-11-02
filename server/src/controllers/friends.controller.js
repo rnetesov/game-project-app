@@ -16,7 +16,7 @@ export async function searchUsers(req, res) {
   const ids = users.map(u => u.id);
   const relations = await prisma.friendRequest.findMany({
     where: { OR: [{ senderId: req.user.id, receiverId: { in: ids } }, { receiverId: req.user.id, senderId: { in: ids } }] },
-    select: { senderId: true, receiverId: true, status: true },
+    select: { id: true, senderId: true, receiverId: true, status: true },
   });
   const usersWithRelation = users.map(u => {
     const relation = relations.find(r => (r.senderId === req.user.id && r.receiverId === u.id) || (r.receiverId === req.user.id && r.senderId === u.id));
