@@ -194,7 +194,9 @@ export default function ActivityFeed() {
 
     requestedPostIdRef.current = null;
     if (targetCommentId) {
-      setExpandedComments(current => ({ ...current, [targetPostId]: true }));
+      if (!expandedComments[targetPostId]) {
+        setExpandedComments(current => ({ ...current, [targetPostId]: true }));
+      }
       if (!Object.prototype.hasOwnProperty.call(comments, targetPostId)) {
         if (requestedCommentPostIdRef.current !== targetPostId) {
           requestedCommentPostIdRef.current = targetPostId;
@@ -234,7 +236,7 @@ export default function ActivityFeed() {
     element.classList.add('is-notification-target');
     window.setTimeout(() => element.classList.remove('is-notification-target'), 2600);
     clearTargetParams();
-  }, [targetPostId, targetCommentId, posts, loading, comments, setSearchParams]);
+  }, [targetPostId, targetCommentId, posts, loading, comments, expandedComments, setSearchParams]);
 
   function handleEditorChange(nextContent, nextTextLength) {
     setContent(nextContent);
