@@ -216,9 +216,11 @@ export async function sendMessage(req, res, next) {
     });
   }
 
+  let messagePersisted = false;
   try {
     const membership = await getMembership(req.params.id, req.user.id);
     if (!membership) {
+      await req.cleanupMessageFiles?.();
       return res.status(404).json({ success: false, message: 'Диалог не найден' });
     }
 
@@ -227,6 +229,7 @@ export async function sendMessage(req, res, next) {
       select: { userId: true },
     });
     if (!recipient) {
+      await req.cleanupMessageFiles?.();
       return res.status(404).json({ success: false, message: 'Получатель диалога не найден' });
     }
 
@@ -269,6 +272,7 @@ export async function sendMessage(req, res, next) {
       });
       return created;
     });
+    messagePersisted = true;
 
     await createNotification({
       type: 'MESSAGE',
@@ -279,7 +283,7 @@ export async function sendMessage(req, res, next) {
 
     res.status(201).json({ success: true, message });
   } catch (error) {
-    await req.cleanupMessageFiles?.();
+    if (!messagePersisted) await req.cleanupMessageFiles?.();
     next(error);
   }
 }
