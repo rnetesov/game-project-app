@@ -341,7 +341,7 @@ export default function LibraryPage() {
           {loading ? <div className="library-state">Загружаем библиотеку...</div> : visibleEntries.length === 0 ? (
             <div className="library-empty">
               <Gamepad2 size={30} />
-              <strong>{activeStatus === 'ALL' ? 'Библиотека пока пуста' : 'В этой категории пока нет игр'}</strong>
+              <strong>{activeStatus === 'ALL' && activeGenre === 'ALL' ? 'Библиотека пока пуста' : 'В этой категории пока нет игр'}</strong>
               <span>{isOwnLibrary ? 'Открой каталог и добавь первую игру в свою коллекцию.' : 'Пользователь пока не добавил сюда игры.'}</span>
               {isOwnLibrary && <button type="button" className="primary-button" onClick={() => setActiveTab('catalog')}>Открыть каталог</button>}
             </div>
