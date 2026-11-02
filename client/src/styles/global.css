@@ -101,3 +101,12 @@
 /* Direct message notifications */
 .icon-message{background:#f0efff;color:#716be0}
 .toast-message .notification-toast-icon{background:#f0efff;color:#716be0}
+
+/* Notification inbox filters */
+.notification-tabs{display:flex;gap:5px;padding:9px 12px 0;border-bottom:1px solid #eff0f5;background:#fff}
+.notification-tabs button{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;flex:1;padding:9px 8px 10px;border-radius:8px 8px 0 0;background:transparent;color:#9699a9;font-size:10px;font-weight:700;transition:color .15s,background .15s}
+.notification-tabs button:hover{background:#faf9ff;color:#716be0}
+.notification-tabs button.active{background:#f7f6ff;color:#716be0}
+.notification-tabs button.active:after{content:'';position:absolute;left:12px;right:12px;bottom:-1px;height:2px;border-radius:3px;background:#7771e8}
+.notification-tabs button span{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#f0efff;color:#716be0;font-size:8px;font-weight:800}
+.notification-tabs button.active span{background:#e8e6ff}
