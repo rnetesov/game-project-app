@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MessageCircle, Plus, Send, Users, ArrowDown, LoaderCircle, Search, Check, CheckCheck, Paperclip, X, FileText, Image as ImageIcon, Download } from 'lucide-react';
+import { MessageCircle, Plus, Send, Users, ArrowDown, LoaderCircle, Search, Check, CheckCheck, Paperclip, X, FileText, Download } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
@@ -17,6 +17,7 @@ import './messages.css';
 
 const MAX_CHAT_FILES = 5;
 const MAX_CHAT_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_CHAT_TOTAL_SIZE = 25 * 1024 * 1024;
 const ALLOWED_CHAT_TYPES = new Set([
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',
   'application/pdf', 'text/plain', 'application/zip',
@@ -315,29 +316,34 @@ export default function Messages() {
   function addFiles(fileList) {
     const incoming = Array.from(fileList || []);
     if (!incoming.length) return;
-    setError('');
-    setPendingFiles(current => {
-      const next = [...current];
-      for (const file of incoming) {
-        if (!ALLOWED_CHAT_TYPES.has(file.type)) {
-          setError(file.name + ': неподдерживаемый тип файла.');
-          continue;
-        }
-        if (file.size > MAX_CHAT_FILE_SIZE) {
-          setError(file.name + ': размер превышает 10 МБ.');
-          continue;
-        }
-        if (next.length >= MAX_CHAT_FILES) {
-          setError('Можно прикрепить не более 5 файлов к одному сообщению.');
-          break;
-        }
-        const duplicate = next.some(item =>
-          item.name === file.name && item.size === file.size && item.lastModified === file.lastModified
-        );
-        if (!duplicate) next.push(file);
+    const next = [...pendingFiles];
+    let validationMessage = '';
+    for (const file of incoming) {
+      if (!ALLOWED_CHAT_TYPES.has(file.type)) {
+        validationMessage = file.name + ': неподдерживаемый тип файла.';
+        continue;
       }
-      return next;
-    });
+      if (file.size > MAX_CHAT_FILE_SIZE) {
+        validationMessage = file.name + ': размер превышает 10 МБ.';
+        continue;
+      }
+      if (next.length >= MAX_CHAT_FILES) {
+        validationMessage = 'Можно прикрепить не более 5 файлов к одному сообщению.';
+        break;
+      }
+      const duplicate = next.some(item =>
+        item.name === file.name && item.size === file.size && item.lastModified === file.lastModified
+      );
+      if (duplicate) continue;
+      const totalSize = next.reduce((sum, item) => sum + item.size, 0) + file.size;
+      if (totalSize > MAX_CHAT_TOTAL_SIZE) {
+        validationMessage = 'Общий размер вложений не должен превышать 25 МБ.';
+        continue;
+      }
+      next.push(file);
+    }
+    setPendingFiles(next);
+    setError(validationMessage);
   }
 
   function handleAttachmentInput(event) {
@@ -567,7 +573,7 @@ export default function Messages() {
                     </button>
                   </div>
                 </div>
-                <div className="messages-attachment-hint">До 5 файлов · 10 МБ каждый · изображения, PDF, TXT, ZIP, DOCX, XLSX, PPTX</div>
+                <div className="messages-attachment-hint">До 5 файлов · 10 МБ каждый · всего до 25 МБ · изображения, PDF, TXT, ZIP, DOCX, XLSX, PPTX</div>
               </form>
             </>
           ) : (
