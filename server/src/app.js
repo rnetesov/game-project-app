@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import { env } from './config/env.js';
+import { uploadsDirectory } from './config/upload-paths.js';
 import healthRoutes from './routes/health.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import profileRoutes from './routes/profile.routes.js';
@@ -15,6 +16,11 @@ const app = express();
 app.use(helmet());
 app.use(cors({ origin: env.clientUrl }));
 app.use(express.json({ limit: '1mb' }));
+app.use('/uploads', express.static(uploadsDirectory, {
+  dotfiles: 'deny',
+  index: false,
+  maxAge: '1d',
+}));
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -39,7 +45,10 @@ app.use((req, res) => {
 
 app.use((err, _req, res, _next) => {
   console.error(err);
-  res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.status ? err.message : 'Внутренняя ошибка сервера',
+  });
 });
 
 export default app;
