@@ -14,8 +14,8 @@ export default function Profile() {
   const [searchParams] = useSearchParams();
   const viewedUsername = searchParams.get('user') || user?.username;
   const isOwnProfile = viewedUsername === user?.username;
-  const isViewedProfileLoaded = profile?.username === viewedUsername;
   const [profile, setProfile] = useState(user);
+  const isViewedProfileLoaded = profile?.username === viewedUsername;
   const [editing, setEditing] = useState(false);
   const [username, setUsername] = useState(user?.username || '');
   const [bio, setBio] = useState(user?.bio || '');
