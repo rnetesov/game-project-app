@@ -18,6 +18,8 @@ model User {
   sentRequests FriendRequest[] @relation("RequestSender")
   receivedRequests FriendRequest[] @relation("RequestReceiver")
   posts        Post[]
+  postLikes    PostLike[]
+  comments     Comment[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   @@index([createdAt])
@@ -42,6 +44,30 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes     PostLike[]
+  comments  Comment[]
   @@index([createdAt])
+  @@index([authorId])
+}
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([postId, userId])
+  @@index([userId])
+}
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  postId    String
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@index([postId, createdAt])
   @@index([authorId])
 }
