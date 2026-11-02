@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware.js';
+import { parsePostMultipart } from '../middleware/post-upload.middleware.js';
 import {
   createPost, deletePost, listPosts, togglePostLike,
   listPostComments, createPostComment, deletePostComment,
@@ -8,7 +9,7 @@ import {
 const router = Router();
 router.use(requireAuth);
 router.get('/', listPosts);
-router.post('/', createPost);
+router.post('/', parsePostMultipart, createPost);
 router.delete('/:id', deletePost);
 router.put('/:id/like', togglePostLike);
 router.get('/:id/comments', listPostComments);

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
 import { createNotification } from '../utils/notifications.js';
+import {
+  removePostImageFiles,
+  removeUploadedFiles,
+} from '../middleware/post-upload.middleware.js';
 
 const postSelect = {
   id: true,
@@ -8,6 +12,7 @@ const postSelect = {
   authorId: true,
   createdAt: true,
   author: { select: { id: true, username: true, avatarUrl: true } },
+  images: { select: { id: true, url: true, createdAt: true }, orderBy: { createdAt: 'asc' } },
   _count: { select: { likes: true, comments: true } },
 };
 
@@ -35,31 +40,51 @@ export async function listPosts(req, res, next) {
 }
 
 export async function createPost(req, res, next) {
+  const files = req.files || [];
   const parsed = z.object({
-    content: z.string().trim().min(1, 'Напиши текст публикации').max(1000, 'Максимум 1000 символов'),
-  }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({
-    success: false, message: parsed.error.issues[0]?.message || 'Некорректная публикация',
-  });
+    content: z.string().trim().max(1000, 'Максимум 1000 символов').default(''),
+  }).safeParse(req.body || {});
+
+  if (!parsed.success) {
+    await removeUploadedFiles(files);
+    return res.status(400).json({
+      success: false, message: parsed.error.issues[0]?.message || 'Некорректная публикация',
+    });
+  }
+  if (!parsed.data.content && files.length === 0) {
+    return res.status(400).json({ success: false, message: 'Добавь текст или прикрепи изображение' });
+  }
+
   try {
     const post = await prisma.post.create({
-      data: { content: parsed.data.content, authorId: req.user.id },
+      data: {
+        content: parsed.data.content,
+        authorId: req.user.id,
+        images: files.length
+          ? { create: files.map(file => ({ url: file.url })) }
+          : undefined,
+      },
       select: postSelect,
     });
     res.status(201).json({ success: true, post: { ...post, likedByMe: false } });
-  } catch (error) { next(error); }
+  } catch (error) {
+    await removeUploadedFiles(files);
+    next(error);
+  }
 }
 
 export async function deletePost(req, res, next) {
   try {
     const post = await prisma.post.findUnique({
-      where: { id: req.params.id }, select: { id: true, authorId: true },
+      where: { id: req.params.id },
+      select: { id: true, authorId: true, images: { select: { url: true } } },
     });
     if (!post) return res.status(404).json({ success: false, message: 'Публикация не найдена' });
     if (post.authorId !== req.user.id) return res.status(403).json({
       success: false, message: 'Можно удалить только свою публикацию',
     });
     await prisma.post.delete({ where: { id: post.id } });
+    await removePostImageFiles(post.images.map(image => image.url));
     res.json({ success: true });
   } catch (error) { next(error); }
 }
