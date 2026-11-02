@@ -236,8 +236,6 @@ export async function deletePost(req, res, next) {
   } catch (error) { next(error); }
 }
 
-const REACTION_TYPES = new Set(['FIRE', 'HEART', 'LAUGH', 'WOW', 'SAD']);
-
 export async function togglePostReaction(req, res, next) {
   const parsed = z.object({ type: z.enum(['FIRE', 'HEART', 'LAUGH', 'WOW', 'SAD']) }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ success: false, message: 'Неизвестный тип реакции' });
@@ -256,9 +254,6 @@ export async function togglePostReaction(req, res, next) {
         create: { postId: post.id, userId: req.user.id, type: parsed.data.type },
         update: { type: parsed.data.type },
       });
-      if (post.authorId !== req.user.id) {
-        await createNotification({ type: 'REACTION', recipientId: post.authorId, actorId: req.user.id, postId: post.id });
-      }
     }
     const reactions = await prisma.postReaction.findMany({ where: { postId: post.id }, select: { type: true } });
     const reactionCounts = reactions.reduce((counts, reaction) => {
