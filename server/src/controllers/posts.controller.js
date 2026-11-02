@@ -129,6 +129,90 @@ export async function createPost(req, res, next) {
   }
 }
 
+export async function updatePost(req, res, next) {
+  const files = req.files || [];
+  const parsed = z.object({
+    content: z.string().trim().max(100000, 'Слишком большой текст публикации').default(''),
+    keepImageIds: z.string().optional().default('[]'),
+  }).safeParse(req.body || {});
+
+  if (!parsed.success) {
+    await removeUploadedFiles(files);
+    return res.status(400).json({
+      success: false, message: parsed.error.issues[0]?.message || 'Некорректная публикация',
+    });
+  }
+
+  let textLength;
+  let keepImageIds;
+  try {
+    textLength = getPostTextLength(parsed.data.content);
+    keepImageIds = JSON.parse(parsed.data.keepImageIds);
+    if (!Array.isArray(keepImageIds) || keepImageIds.length > 4
+      || keepImageIds.some(id => typeof id !== 'string' || id.length > 100)) {
+      throw new Error('Некорректный список изображений');
+    }
+  } catch (error) {
+    await removeUploadedFiles(files);
+    return res.status(400).json({ success: false, message: error.message || 'Некорректные данные публикации' });
+  }
+
+  if (textLength > MAX_POST_TEXT_LENGTH) {
+    await removeUploadedFiles(files);
+    return res.status(400).json({ success: false, message: 'Максимум 1000 символов в публикации' });
+  }
+  if (keepImageIds.length + files.length > 4) {
+    await removeUploadedFiles(files);
+    return res.status(400).json({ success: false, message: 'Можно прикрепить не более 4 изображений' });
+  }
+  if (!parsed.data.content && keepImageIds.length + files.length === 0) {
+    await removeUploadedFiles(files);
+    return res.status(400).json({ success: false, message: 'Добавь текст или прикрепи изображение' });
+  }
+
+  try {
+    const existingPost = await prisma.post.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, authorId: true, images: { select: { id: true, url: true } } },
+    });
+    if (!existingPost) {
+      await removeUploadedFiles(files);
+      return res.status(404).json({ success: false, message: 'Публикация не найдена' });
+    }
+    if (existingPost.authorId !== req.user.id) {
+      await removeUploadedFiles(files);
+      return res.status(403).json({ success: false, message: 'Можно редактировать только свою публикацию' });
+    }
+
+    const existingIds = new Set(existingPost.images.map(image => image.id));
+    if (keepImageIds.some(id => !existingIds.has(id))) {
+      await removeUploadedFiles(files);
+      return res.status(400).json({ success: false, message: 'Список изображений публикации изменился. Обнови страницу и попробуй ещё раз.' });
+    }
+
+    const removedImages = existingPost.images.filter(image => !keepImageIds.includes(image.id));
+    const post = await prisma.$transaction(async tx => {
+      await tx.postImage.deleteMany({
+        where: { postId: existingPost.id, id: { notIn: keepImageIds } },
+      });
+      return tx.post.update({
+        where: { id: existingPost.id },
+        data: {
+          content: parsed.data.content,
+          images: files.length ? { create: files.map(file => ({ url: file.url })) } : undefined,
+        },
+        select: postSelect,
+      });
+    });
+
+    await removePostImageFiles(removedImages.map(image => image.url));
+    res.json({ success: true, post });
+  } catch (error) {
+    await removeUploadedFiles(files);
+    next(error);
+  }
+}
+
 export async function deletePost(req, res, next) {
   try {
     const post = await prisma.post.findUnique({
