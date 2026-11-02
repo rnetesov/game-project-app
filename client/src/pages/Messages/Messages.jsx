@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MessageCircle, Plus, Send, Users, ArrowDown, LoaderCircle, Search, Check, CheckCheck } from 'lucide-react';
+import { MessageCircle, Plus, Send, Users, ArrowDown, LoaderCircle, Search, Check, CheckCheck, Paperclip, X, FileText, Download } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
@@ -9,9 +9,86 @@ import {
   markConversationRead,
   openConversation,
   sendConversationMessage,
+  getConversationAttachmentBlob,
   searchPlayers,
 } from '../../services/api.js';
 import './messages.css';
+
+
+const MAX_CHAT_FILES = 5;
+const MAX_CHAT_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_CHAT_TOTAL_SIZE = 25 * 1024 * 1024;
+const ALLOWED_CHAT_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'application/pdf', 'text/plain', 'application/zip',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+]);
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' Б';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' КБ';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' МБ';
+}
+
+function PendingAttachment({ file, onRemove }) {
+  const [preview, setPreview] = useState('');
+  useEffect(() => {
+    if (!file.type.startsWith('image/')) return undefined;
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  return (
+    <div className="messages-pending-file">
+      {preview ? <img src={preview} alt="" /> : <span className="messages-file-icon"><FileText size={17} /></span>}
+      <span className="messages-pending-file-copy"><strong>{file.name}</strong><small>{formatFileSize(file.size)}</small></span>
+      <button type="button" onClick={onRemove} aria-label={'Убрать ' + file.name}><X size={14} /></button>
+    </div>
+  );
+}
+
+function MessageAttachment({ conversationId, attachment }) {
+  const [url, setUrl] = useState('');
+  const [error, setError] = useState('');
+  const isImage = attachment.mimeType.startsWith('image/');
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+    getConversationAttachmentBlob(conversationId, attachment.id)
+      .then(blob => {
+        if (!active) return;
+        objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+      })
+      .catch(err => {
+        if (active) setError(err.message || 'Не удалось загрузить вложение');
+      });
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [conversationId, attachment.id]);
+
+  if (error) return <span className="messages-attachment-error">{attachment.originalName}: {error}</span>;
+  if (!url) return <span className="messages-attachment-loading"><LoaderCircle size={13} className="messages-spin" /> {attachment.originalName}</span>;
+
+  return isImage ? (
+    <a className="messages-attachment-image" href={url} target="_blank" rel="noreferrer" title="Открыть изображение">
+      <img src={url} alt={attachment.originalName} loading="lazy" />
+      <span>{attachment.originalName}</span>
+    </a>
+  ) : (
+    <a className="messages-attachment-file" href={url} download={attachment.originalName}>
+      <span className="messages-file-icon"><FileText size={18} /></span>
+      <span><strong>{attachment.originalName}</strong><small>{formatFileSize(attachment.size)}</small></span>
+      <Download size={15} />
+    </a>
+  );
+}
 
 function Avatar({ user, small = false }) {
   const className = 'messages-avatar' + (small ? ' small' : '');
@@ -54,6 +131,9 @@ export default function Messages() {
   const [searchingPlayers, setSearchingPlayers] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
   const [messageText, setMessageText] = useState('');
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const [draggingFiles, setDraggingFiles] = useState(false);
+  const attachmentInputRef = useRef(null);
   const [nextCursor, setNextCursor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -214,20 +294,77 @@ export default function Messages() {
   async function submitMessage(event) {
     event.preventDefault();
     const content = messageText.trim();
-    if (!content || !selectedId || sending) return;
+    if ((!content && pendingFiles.length === 0) || !selectedId || sending) return;
     setSending(true);
     setError('');
     try {
-      const data = await sendConversationMessage(selectedId, content);
+      const data = await sendConversationMessage(selectedId, content, pendingFiles);
       shouldStickToBottom.current = true;
       setMessages(current => mergeMessages(current, [data.message]));
       setMessageText('');
+      setPendingFiles([]);
+      if (attachmentInputRef.current) attachmentInputRef.current.value = '';
       await loadConversations();
     } catch (err) {
       setError(err.message || 'Не удалось отправить сообщение');
     } finally {
       setSending(false);
     }
+  }
+
+
+  function addFiles(fileList) {
+    const incoming = Array.from(fileList || []);
+    if (!incoming.length) return;
+    const next = [...pendingFiles];
+    let validationMessage = '';
+    for (const file of incoming) {
+      if (!ALLOWED_CHAT_TYPES.has(file.type)) {
+        validationMessage = file.name + ': неподдерживаемый тип файла.';
+        continue;
+      }
+      if (file.size > MAX_CHAT_FILE_SIZE) {
+        validationMessage = file.name + ': размер превышает 10 МБ.';
+        continue;
+      }
+      if (next.length >= MAX_CHAT_FILES) {
+        validationMessage = 'Можно прикрепить не более 5 файлов к одному сообщению.';
+        break;
+      }
+      const duplicate = next.some(item =>
+        item.name === file.name && item.size === file.size && item.lastModified === file.lastModified
+      );
+      if (duplicate) continue;
+      const totalSize = next.reduce((sum, item) => sum + item.size, 0) + file.size;
+      if (totalSize > MAX_CHAT_TOTAL_SIZE) {
+        validationMessage = 'Общий размер вложений не должен превышать 25 МБ.';
+        continue;
+      }
+      next.push(file);
+    }
+    setPendingFiles(next);
+    setError(validationMessage);
+  }
+
+  function handleAttachmentInput(event) {
+    addFiles(event.target.files);
+    event.target.value = '';
+  }
+
+  function handleComposerPaste(event) {
+    const imageFiles = Array.from(event.clipboardData?.items || [])
+      .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+      .map(item => item.getAsFile())
+      .filter(Boolean);
+    if (!imageFiles.length) return;
+    event.preventDefault();
+    addFiles(imageFiles);
+  }
+
+  function handleComposerDrop(event) {
+    event.preventDefault();
+    setDraggingFiles(false);
+    addFiles(event.dataTransfer?.files);
   }
 
   function handleComposerKeyDown(event) {
@@ -363,7 +500,14 @@ export default function Messages() {
                     {!own && <Avatar user={message.sender} small />}
                     <div className="messages-bubble">
                       {!own && <Link className="messages-sender-profile" to={'/profile?user=' + encodeURIComponent(message.sender?.username || '')}>{message.sender?.username}</Link>}
-                      <p>{message.content}</p>
+                      {message.content && <p>{message.content}</p>}
+                      {message.attachments?.length > 0 && (
+                        <div className="messages-attachments">
+                          {message.attachments.map(attachment => (
+                            <MessageAttachment key={attachment.id} conversationId={selectedId} attachment={attachment} />
+                          ))}
+                        </div>
+                      )}
                       <div className="messages-bubble-footer">
                         <time>{formatTime(message.createdAt)}</time>
                         {own && (
@@ -382,22 +526,54 @@ export default function Messages() {
                 }) : <div className="messages-start-hint"><MessageCircle size={25}/><strong>Начало переписки</strong><span>Отправь первое сообщение.</span></div>}
                 <div ref={bottomRef} />
               </div>
-              <form className="messages-composer" onSubmit={submitMessage}>
+              <form
+                className={'messages-composer' + (draggingFiles ? ' is-dragging-files' : '')}
+                onSubmit={submitMessage}
+                onDragOver={event => { event.preventDefault(); setDraggingFiles(true); }}
+                onDragLeave={event => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) setDraggingFiles(false);
+                }}
+                onDrop={handleComposerDrop}
+              >
+                <input
+                  ref={attachmentInputRef}
+                  className="messages-attachment-input"
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,application/zip,.docx,.xlsx,.pptx"
+                  onChange={handleAttachmentInput}
+                  aria-label="Выбрать вложения"
+                />
+                {draggingFiles && <div className="messages-drop-overlay"><Paperclip size={20} /> Отпусти файлы, чтобы прикрепить</div>}
+                {pendingFiles.length > 0 && (
+                  <div className="messages-pending-files">
+                    {pendingFiles.map((file, index) => (
+                      <PendingAttachment key={file.name + '-' + file.size + '-' + file.lastModified} file={file} onRemove={() => setPendingFiles(current => current.filter((_, fileIndex) => fileIndex !== index))} />
+                    ))}
+                  </div>
+                )}
                 <textarea
                   value={messageText}
                   onChange={event => setMessageText(event.target.value)}
                   onKeyDown={handleComposerKeyDown}
-                  placeholder="Напиши сообщение... (Enter — отправить, Shift + Enter — перенос строки)"
+                  onPaste={handleComposerPaste}
+                  placeholder="Напиши сообщение... Вставь картинку Ctrl+V или прикрепи файл"
                   maxLength={2000}
                   rows={2}
                 />
                 <div className="messages-composer-footer">
-                  <span>{messageText.length}/2000</span>
-                  <button type="submit" disabled={!messageText.trim() || sending}>
-                    {sending ? <LoaderCircle size={16} className="messages-spin" /> : <Send size={16} />}
-                    Отправить
-                  </button>
+                  <span>{messageText.length}/2000 · {pendingFiles.length}/5 файлов</span>
+                  <div className="messages-composer-actions">
+                    <button type="button" className="messages-attach-button" onClick={() => attachmentInputRef.current?.click()} disabled={sending} title="Прикрепить файлы" aria-label="Прикрепить файлы">
+                      <Paperclip size={17} /> <span>Вложить</span>
+                    </button>
+                    <button type="submit" disabled={(!messageText.trim() && pendingFiles.length === 0) || sending}>
+                      {sending ? <LoaderCircle size={16} className="messages-spin" /> : <Send size={16} />}
+                      Отправить
+                    </button>
+                  </div>
                 </div>
+                <div className="messages-attachment-hint">До 5 файлов · 10 МБ каждый · всего до 25 МБ · изображения, PDF, TXT, ZIP, DOCX, XLSX, PPTX</div>
               </form>
             </>
           ) : (

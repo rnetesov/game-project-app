@@ -6,3 +6,5 @@ export const uploadsDirectory = path.resolve(configDirectory, '../../uploads');
 export const postImagesDirectory = path.join(uploadsDirectory, 'post-images');
 
 export const gameCoversDirectory = path.join(uploadsDirectory, 'game-covers');
+
+export const messageAttachmentsDirectory = path.resolve(configDirectory, '../../private-uploads/message-attachments');

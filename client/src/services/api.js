@@ -149,8 +149,26 @@ export function getConversationMessages(id, options = {}) {
   if (options.before) params.set('before', options.before);
   return request('/conversations/' + encodeURIComponent(id) + '/messages?' + params.toString(), { token: authToken() });
 }
-export function sendConversationMessage(id, content) {
-  return request('/conversations/' + encodeURIComponent(id) + '/messages', { method: 'POST', token: authToken(), body: JSON.stringify({ content }) });
+export function sendConversationMessage(id, content, files = []) {
+  const url = '/conversations/' + encodeURIComponent(id) + '/messages';
+  if (!files.length) {
+    return request(url, { method: 'POST', token: authToken(), body: JSON.stringify({ content }) });
+  }
+  const formData = new FormData();
+  formData.append('content', content);
+  files.forEach(file => formData.append('attachments', file, file.name || 'attachment'));
+  return request(url, { method: 'POST', token: authToken(), body: formData });
+}
+export async function getConversationAttachmentBlob(conversationId, attachmentId) {
+  const response = await fetch(
+    API_URL + '/conversations/' + encodeURIComponent(conversationId) + '/attachments/' + encodeURIComponent(attachmentId),
+    { headers: { Authorization: 'Bearer ' + authToken() } },
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || 'Не удалось загрузить вложение');
+  }
+  return response.blob();
 }
 export function markConversationRead(id) {
   return request('/conversations/' + encodeURIComponent(id) + '/read', { method: 'PATCH', token: authToken() });

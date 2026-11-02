@@ -143,6 +143,7 @@ model Message {
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  attachments    MessageAttachment[]
   @@index([conversationId, createdAt])
   @@index([senderId])
 }
@@ -192,4 +193,17 @@ model UserGame {
   @@unique([userId, gameId])
   @@index([userId, status, updatedAt])
   @@index([gameId, status])
+}
+
+
+model MessageAttachment {
+  id           String   @id @default(cuid())
+  messageId    String
+  originalName String
+  storageName  String   @unique
+  mimeType     String
+  size         Int
+  createdAt    DateTime @default(now())
+  message      Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  @@index([messageId, createdAt])
 }

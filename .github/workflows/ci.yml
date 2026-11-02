@@ -51,6 +51,7 @@ jobs:
           node --check src/routes/notifications.routes.js
           node --check src/utils/notifications.js
           node --check src/controllers/conversations.controller.js
+          node --check src/middleware/message-attachments.middleware.js
           node --check src/routes/conversations.routes.js
           node --check src/controllers/posts.controller.js
           node --check src/controllers/games.controller.js

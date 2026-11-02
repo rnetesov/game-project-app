@@ -1,6 +1,9 @@
 import { z } from 'zod';
+import path from 'node:path';
 import { prisma } from '../config/prisma.js';
 import { createNotification } from '../utils/notifications.js';
+import { messageAttachmentsDirectory } from '../config/upload-paths.js';
+import { deleteMessageAttachmentFile } from '../middleware/message-attachments.middleware.js';
 
 const userSelect = {
   id: true,
@@ -164,6 +167,10 @@ export async function listMessages(req, res, next) {
         senderId: true,
         createdAt: true,
         sender: { select: userSelect },
+        attachments: {
+          select: { id: true, originalName: true, mimeType: true, size: true, createdAt: true },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
     const hasMore = rows.length > parsed.data.limit;
@@ -189,19 +196,31 @@ export async function listMessages(req, res, next) {
 }
 
 export async function sendMessage(req, res, next) {
+  const files = req.messageFiles || [];
   const parsed = z.object({
-    content: z.string().trim().min(1, 'Сообщение не может быть пустым').max(2000, 'Максимум 2000 символов'),
-  }).safeParse(req.body);
+    content: z.string().trim().max(2000, 'Максимум 2000 символов').default(''),
+  }).safeParse(req.body || {});
+  if (parsed.success && !parsed.data.content && files.length === 0) {
+    await req.cleanupMessageFiles?.();
+    return res.status(400).json({ success: false, message: 'Добавь текст или хотя бы одно вложение' });
+  }
+  if (files.length > 5) {
+    await req.cleanupMessageFiles?.();
+    return res.status(400).json({ success: false, message: 'Можно отправить не более 5 файлов за одно сообщение' });
+  }
   if (!parsed.success) {
+    await req.cleanupMessageFiles?.();
     return res.status(400).json({
       success: false,
       message: parsed.error.issues[0]?.message || 'Некорректное сообщение',
     });
   }
 
+  let messagePersisted = false;
   try {
     const membership = await getMembership(req.params.id, req.user.id);
     if (!membership) {
+      await req.cleanupMessageFiles?.();
       return res.status(404).json({ success: false, message: 'Диалог не найден' });
     }
 
@@ -210,6 +229,7 @@ export async function sendMessage(req, res, next) {
       select: { userId: true },
     });
     if (!recipient) {
+      await req.cleanupMessageFiles?.();
       return res.status(404).json({ success: false, message: 'Получатель диалога не найден' });
     }
 
@@ -221,6 +241,14 @@ export async function sendMessage(req, res, next) {
           senderId: req.user.id,
           content: parsed.data.content,
           createdAt: now,
+          attachments: files.length ? {
+            create: files.map(file => ({
+              originalName: file.originalName,
+              storageName: file.storageName,
+              mimeType: file.mimeType,
+              size: file.size,
+            })),
+          } : undefined,
         },
         select: {
           id: true,
@@ -228,6 +256,10 @@ export async function sendMessage(req, res, next) {
           senderId: true,
           createdAt: true,
           sender: { select: userSelect },
+          attachments: {
+            select: { id: true, originalName: true, mimeType: true, size: true, createdAt: true },
+            orderBy: { createdAt: 'asc' },
+          },
         },
       });
       await tx.conversation.update({
@@ -240,6 +272,7 @@ export async function sendMessage(req, res, next) {
       });
       return created;
     });
+    messagePersisted = true;
 
     await createNotification({
       type: 'MESSAGE',
@@ -249,6 +282,36 @@ export async function sendMessage(req, res, next) {
     });
 
     res.status(201).json({ success: true, message });
+  } catch (error) {
+    if (!messagePersisted) await req.cleanupMessageFiles?.();
+    next(error);
+  }
+}
+
+export async function downloadMessageAttachment(req, res, next) {
+  try {
+    const membership = await getMembership(req.params.id, req.user.id);
+    if (!membership) {
+      return res.status(404).json({ success: false, message: 'Диалог не найден' });
+    }
+
+    const attachment = await prisma.messageAttachment.findFirst({
+      where: {
+        id: req.params.attachmentId,
+        message: { conversationId: req.params.id },
+      },
+      select: { storageName: true, originalName: true, mimeType: true },
+    });
+    if (!attachment) {
+      return res.status(404).json({ success: false, message: 'Вложение не найдено' });
+    }
+
+    const filePath = path.join(messageAttachmentsDirectory, attachment.storageName);
+    res.setHeader('Content-Type', attachment.mimeType);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.download(filePath, attachment.originalName, error => {
+      if (error && !res.headersSent) next(error);
+    });
   } catch (error) {
     next(error);
   }
