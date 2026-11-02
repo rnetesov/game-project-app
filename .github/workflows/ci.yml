@@ -50,6 +50,8 @@ jobs:
           node --check src/controllers/notifications.controller.js
           node --check src/routes/notifications.routes.js
           node --check src/utils/notifications.js
+          node --check src/controllers/conversations.controller.js
+          node --check src/routes/conversations.routes.js
           node --check src/controllers/posts.controller.js
           node --check src/controllers/friends.controller.js
           node --check prisma/seed-demo-posts.js
