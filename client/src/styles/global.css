@@ -110,3 +110,9 @@
 .notification-tabs button.active:after{content:'';position:absolute;left:12px;right:12px;bottom:-1px;height:2px;border-radius:3px;background:#7771e8}
 .notification-tabs button span{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#f0efff;color:#716be0;font-size:8px;font-weight:800}
 .notification-tabs button.active span{background:#e8e6ff}
+
+
+/* Open player profiles from friend cards */
+.friend-profile-link{display:flex;align-items:center;gap:11px;flex:1;min-width:0;color:inherit;text-decoration:none;border-radius:9px}
+.friend-profile-link:hover .friend-card-info>strong{color:#716be0}
+.friend-profile-link:focus-visible{outline:2px solid #918bed;outline-offset:4px}
