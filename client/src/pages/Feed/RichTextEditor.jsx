@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import {
   Bold, Italic, Underline, List, ListOrdered, Heading2,
-  Link2, RemoveFormatting, Undo2, Redo2,
+  Link2, Pilcrow, RemoveFormatting, Undo2, Redo2,
 } from 'lucide-react';
 import { serializeRichDocument } from './richContent.jsx';
 
@@ -83,6 +83,7 @@ export default function RichTextEditor({ editorRef, onChange, onImagePaste, text
         <ToolbarButton label="Подчёркнутый" icon={Underline} onClick={() => runCommand('underline')} />
         <span className="feed-format-divider" />
         <ToolbarButton label="Заголовок" icon={Heading2} onClick={() => runCommand('formatBlock', 'h2')} />
+        <ToolbarButton label="Обычный абзац" icon={Pilcrow} onClick={() => runCommand('formatBlock', 'p')} />
         <ToolbarButton label="Маркированный список" icon={List} onClick={() => runCommand('insertUnorderedList')} />
         <ToolbarButton label="Нумерованный список" icon={ListOrdered} onClick={() => runCommand('insertOrderedList')} />
         <span className="feed-format-divider" />
