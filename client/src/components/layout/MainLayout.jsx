@@ -103,6 +103,7 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const initial = user?.username?.charAt(0)?.toUpperCase() || 'G';
   const [notifications, setNotifications] = useState([]);
+  const [activeNotificationTab, setActiveNotificationTab] = useState('unread');
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -111,6 +112,9 @@ export default function MainLayout() {
   const [toasts, setToasts] = useState([]);
   const knownNotificationIds = useRef(new Set());
   const notificationBaselineReady = useRef(false);
+  const visibleNotifications = activeNotificationTab === 'unread'
+    ? notifications.filter(notification => !notification.readAt)
+    : notifications;
 
   const closeToast = useCallback((id) => {
     setToasts(current => current.filter(item => item.id !== id));
@@ -267,6 +271,26 @@ export default function MainLayout() {
                   <div><strong>Уведомления</strong><small>{unreadCount ? `Непрочитанных: ${unreadCount}` : 'Всё просмотрено'}</small></div>
                   {unreadCount > 0 && <button onClick={markAllRead} disabled={notificationsLoading}><CheckCheck size={14} />Прочитать все</button>}
                 </div>
+                <div className="notification-tabs" role="tablist" aria-label="Фильтр уведомлений">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeNotificationTab === 'unread'}
+                    className={activeNotificationTab === 'unread' ? 'active' : ''}
+                    onClick={() => setActiveNotificationTab('unread')}
+                  >
+                    Непрочитанные <span>{unreadCount > 99 ? '99+' : unreadCount}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeNotificationTab === 'all'}
+                    className={activeNotificationTab === 'all' ? 'active' : ''}
+                    onClick={() => setActiveNotificationTab('all')}
+                  >
+                    Все
+                  </button>
+                </div>
                 <div className="notification-permission-row">
                   {notificationPermission === 'granted'
                     ? <span className="permission-enabled"><MonitorCheck size={14} /> Системные уведомления включены</span>
@@ -277,10 +301,14 @@ export default function MainLayout() {
                         : <span className="permission-blocked">Системные уведомления не поддерживаются этим браузером</span>}
                 </div>
                 {notificationsError && <p className="notification-error">{notificationsError}</p>}
-                {notifications.length === 0
-                  ? <div className="notification-empty"><Bell size={22} /><strong>Пока тихо</strong><span>Новые реакции и заявки появятся здесь</span></div>
+                {visibleNotifications.length === 0
+                  ? <div className="notification-empty">
+                      {activeNotificationTab === 'unread' ? <CheckCheck size={22} /> : <Bell size={22} />}
+                      <strong>{activeNotificationTab === 'unread' ? 'Непрочитанных уведомлений нет' : 'Пока тихо'}</strong>
+                      <span>{activeNotificationTab === 'unread' ? 'Новые события появятся здесь' : 'История уведомлений пока пуста'}</span>
+                    </div>
                   : <div className="notification-list">
-                    {notifications.map(notification => <button
+                    {visibleNotifications.map(notification => <button
                       key={notification.id}
                       className={`notification-item${notification.readAt ? '' : ' unread'}`}
                       onClick={() => openNotification(notification)}
