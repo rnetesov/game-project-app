@@ -124,3 +124,25 @@
 .feed-comment.is-notification-target{border-radius:9px;background:#f6f5ff;outline:2px solid #938cf0;outline-offset:3px;animation:feed-comment-target 2.6s ease-out}
 @keyframes feed-comment-target{0%,35%{box-shadow:0 0 0 5px #7771e82b}100%{box-shadow:0 0 0 0 #7771e800}}
 @media(prefers-reduced-motion:reduce){.feed-comment.is-notification-target{animation:none}}
+
+
+/* Feed filters and search */
+.feed-discovery{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:-2px 0 16px;padding:11px;border:1px solid #eff0f5;border-radius:12px;background:#fff}
+.feed-filter-tabs{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.feed-filter-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:7px 11px;border:1px solid transparent;border-radius:8px;background:transparent;color:#777a8c;font-size:10px;font-weight:700;white-space:nowrap;transition:background .15s,border-color .15s,color .15s}
+.feed-filter-tabs button:hover{background:#f7f6ff;color:#716be0}
+.feed-filter-tabs button.active{border-color:#dddafa;background:#f0efff;color:#665fe0}
+.feed-search-form{display:flex;align-items:center;gap:8px;min-width:min(100%,320px);max-width:430px;flex:1;padding:4px 5px 4px 10px;border:1px solid #eceef4;border-radius:9px;background:#fff;color:#a1a3b2}
+.feed-search-form:focus-within{border-color:#918bed;box-shadow:0 0 0 3px #7771e817}
+.feed-search-form>svg{flex:none}
+.feed-search-form input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#45475b;font:inherit;font-size:10px}
+.feed-search-form input::placeholder{color:#b2b4c0}
+.feed-search-form input::-webkit-search-cancel-button{-webkit-appearance:none}
+.feed-search-clear{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:6px;background:#f5f5f9;color:#8c8fa1}
+.feed-search-clear:hover{background:#f0efff;color:#716be0}
+.feed-search-submit{flex:none;padding:7px 11px;border-radius:7px;background:#7771e8;color:#fff;font-size:10px;font-weight:800}
+.feed-search-submit:hover{background:#665fe0}
+.feed-search-submit:disabled{opacity:.45;cursor:default}
+.feed-search-reset{margin-top:-8px;margin-bottom:14px;padding:0;background:transparent;color:#7771e8;font-size:10px;text-align:left}
+.feed-search-reset:hover{text-decoration:underline;text-underline-offset:2px}
+@media(max-width:700px){.feed-discovery{align-items:stretch;flex-direction:column;padding:10px}.feed-filter-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.feed-filter-tabs button{padding:7px 5px;font-size:9px}.feed-search-form{max-width:none;min-width:0;width:100%}}
