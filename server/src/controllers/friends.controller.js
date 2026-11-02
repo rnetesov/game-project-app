@@ -23,9 +23,46 @@ export async function searchUsers(req, res) {
     let relationship = 'NONE';
     if (relation?.status === 'ACCEPTED') relationship = 'FRIENDS';
     else if (relation?.status === 'PENDING') relationship = relation.senderId === req.user.id ? 'SENT' : 'RECEIVED';
-    return { ...shapeUser(u), relationship };
+    return { ...shapeUser(u), relationship, requestId: relation?.status === 'PENDING' ? relation.id : null };
   });
   res.json({ success: true, users: usersWithRelation });
+}
+
+export async function getRelationship(req, res) {
+  const targetId = req.params.userId;
+  if (targetId === req.user.id) return res.json({ success: true, relationship: 'SELF', requestId: null });
+  const target = await prisma.user.findUnique({ where: { id: targetId }, select: { id: true } });
+  if (!target) return res.status(404).json({ success: false, message: 'Игрок не найден' });
+  const relation = await prisma.friendRequest.findFirst({
+    where: { OR: [
+      { senderId: req.user.id, receiverId: targetId },
+      { senderId: targetId, receiverId: req.user.id },
+    ] },
+    select: { id: true, senderId: true, receiverId: true, status: true },
+  });
+  let relationship = 'NONE';
+  if (relation?.status === 'ACCEPTED') relationship = 'FRIENDS';
+  else if (relation?.status === 'PENDING') relationship = relation.senderId === req.user.id ? 'SENT' : 'RECEIVED';
+  res.json({ success: true, relationship, requestId: relation?.status === 'PENDING' ? relation.id : null });
+}
+
+export async function listSentRequests(req, res) {
+  const requests = await prisma.friendRequest.findMany({
+    where: { senderId: req.user.id, status: 'PENDING' },
+    include: { receiver: { select: userSelect } },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json({ success: true, requests: requests.map(r => ({ id: r.id, createdAt: r.createdAt, user: shapeUser(r.receiver) })) });
+}
+
+export async function cancelRequest(req, res) {
+  const request = await prisma.friendRequest.findFirst({
+    where: { id: req.params.id, senderId: req.user.id, status: 'PENDING' },
+    select: { id: true },
+  });
+  if (!request) return res.status(404).json({ success: false, message: 'Исходящая заявка не найдена' });
+  await prisma.friendRequest.delete({ where: { id: request.id } });
+  res.json({ success: true, message: 'Заявка отменена' });
 }
 
 export async function listFriends(req, res) {
