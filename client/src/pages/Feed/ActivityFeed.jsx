@@ -1,12 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageSquare, Send, Trash2, Newspaper, RefreshCw, Heart } from 'lucide-react';
+import {
+  MessageSquare, Send, Trash2, Newspaper, RefreshCw, Heart,
+  ImagePlus, X, Images, ClipboardPaste,
+} from 'lucide-react';
 import {
   createPost, deletePost, getPosts, togglePostLike,
-  getPostComments, createPostComment, deletePostComment,
+  getPostComments, createPostComment, deletePostComment, getAssetUrl,
 } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import './ActivityFeed.css';
+
+const MAX_POST_IMAGES = 4;
+const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 function formatDate(value) {
   const date = new Date(value);
@@ -16,11 +23,15 @@ function Avatar({ author }) {
   if (author.avatarUrl) return <img className="feed-avatar" src={author.avatarUrl} alt="" />;
   return <div className="feed-avatar feed-avatar-fallback">{author.username?.[0]?.toUpperCase() || '?'}</div>;
 }
+
 export default function ActivityFeed() {
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [content, setContent] = useState('');
+  const [attachments, setAttachments] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -29,6 +40,73 @@ export default function ActivityFeed() {
   const [comments, setComments] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
   const [commentBusy, setCommentBusy] = useState({});
+  const fileInputRef = useRef(null);
+  const attachmentRef = useRef([]);
+
+  const syncAttachments = (next) => {
+    attachmentRef.current = next;
+    setAttachments(next);
+  };
+
+  const addImages = (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+
+    const accepted = [];
+    const rejected = [];
+    let remaining = Math.max(0, MAX_POST_IMAGES - attachmentRef.current.length);
+
+    for (const file of files) {
+      if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+        rejected.push('Формат ' + (file.name || 'файла') + ' не поддерживается');
+        continue;
+      }
+      if (file.size > MAX_IMAGE_SIZE) {
+        rejected.push((file.name || 'Изображение') + ': максимум 8 МБ на файл');
+        continue;
+      }
+      if (remaining <= 0) {
+        rejected.push('Можно прикрепить не более 4 изображений');
+        continue;
+      }
+      accepted.push({
+        id: Date.now().toString(36) + '-' + Math.random().toString(36).slice(2),
+        file,
+        previewUrl: URL.createObjectURL(file),
+      });
+      remaining -= 1;
+    }
+
+    if (accepted.length) syncAttachments([...attachmentRef.current, ...accepted]);
+    if (rejected.length) setError(rejected[0]);
+    else setError('');
+  };
+
+  const removeAttachment = (id) => {
+    const current = attachmentRef.current;
+    const removed = current.find(item => item.id === id);
+    if (removed) URL.revokeObjectURL(removed.previewUrl);
+    syncAttachments(current.filter(item => item.id !== id));
+  };
+
+  const clearAttachments = () => {
+    attachmentRef.current.forEach(item => URL.revokeObjectURL(item.previewUrl));
+    syncAttachments([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  useEffect(() => () => {
+    attachmentRef.current.forEach(item => URL.revokeObjectURL(item.previewUrl));
+  }, []);
+
+  useEffect(() => {
+    if (!lightboxImage) return undefined;
+    const handleKeyDown = event => {
+      if (event.key === 'Escape') setLightboxImage('');
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxImage]);
 
   const load = useCallback(async (nextCursor = null) => {
     if (nextCursor) setLoadingMore(true);
@@ -48,15 +126,32 @@ export default function ActivityFeed() {
 
   useEffect(() => { load(); }, [load]);
 
+  function handlePaste(event) {
+    const pastedImages = Array.from(event.clipboardData?.items || [])
+      .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+      .map(item => item.getAsFile())
+      .filter(Boolean);
+    if (!pastedImages.length) return;
+    event.preventDefault();
+    addImages(pastedImages);
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    setIsDragging(false);
+    addImages(event.dataTransfer?.files);
+  }
+
   async function submitPost(event) {
     event.preventDefault();
-    if (!content.trim() || posting) return;
+    if ((!content.trim() && !attachments.length) || posting) return;
     setPosting(true);
     setError('');
     try {
-      const data = await createPost(content);
+      const data = await createPost(content, attachments.map(item => item.file));
       setPosts(current => [data.post, ...current]);
       setContent('');
+      clearAttachments();
     } catch (err) {
       setError(err.message || 'Не удалось опубликовать запись');
     } finally {
@@ -138,10 +233,63 @@ export default function ActivityFeed() {
       <div className="feed-title-icon"><Newspaper size={22} /></div>
     </div>
 
-    <form className="feed-composer" onSubmit={submitPost}>
-      <div className="composer-heading"><div className="composer-avatar">{user?.username?.[0]?.toUpperCase() || 'G'}</div><div><strong>Поделись с сообществом</strong><span>Что нового в твоём игровом мире?</span></div></div>
-      <textarea value={content} onChange={event => setContent(event.target.value)} maxLength={1000} placeholder="Напиши что-нибудь..." rows={4} />
-      <div className="composer-footer"><span>{content.length}/1000</span><button className="primary-button" type="submit" disabled={!content.trim() || posting}><Send size={15} />{posting ? 'Публикуем...' : 'Опубликовать'}</button></div>
+    <form
+      className={'feed-composer' + (isDragging ? ' is-dragging' : '')}
+      onSubmit={submitPost}
+      onDragOver={event => { event.preventDefault(); setIsDragging(true); }}
+      onDragLeave={event => {
+        if (event.currentTarget === event.target) setIsDragging(false);
+      }}
+      onDrop={handleDrop}
+    >
+      <div className="composer-heading">
+        <div className="composer-avatar">{user?.username?.[0]?.toUpperCase() || 'G'}</div>
+        <div><strong>Поделись с сообществом</strong><span>Что нового в твоём игровом мире?</span></div>
+      </div>
+      <textarea
+        value={content}
+        onChange={event => setContent(event.target.value)}
+        onPaste={handlePaste}
+        maxLength={1000}
+        placeholder="Напиши что-нибудь... Вставь скриншот через Ctrl+V"
+        rows={4}
+      />
+      {attachments.length > 0 && <div className="feed-attachment-area">
+        <div className="feed-attachment-heading"><span>Вложения</span><small>{attachments.length} из {MAX_POST_IMAGES}</small></div>
+        <div className="feed-attachment-grid">
+          {attachments.map((item, index) => <div className="feed-attachment-preview" key={item.id}>
+            <img src={item.previewUrl} alt={'Предпросмотр ' + (index + 1)} />
+            <span>{item.file.name || 'Скриншот ' + (index + 1)}</span>
+            <button type="button" onClick={() => removeAttachment(item.id)} aria-label="Убрать изображение"><X size={14} /></button>
+          </div>)}
+        </div>
+      </div>}
+      <div className="feed-editor-footer">
+        <div className="feed-editor-tools">
+          <input
+            ref={fileInputRef}
+            className="feed-file-input"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            multiple
+            onChange={event => {
+              addImages(event.target.files);
+              event.target.value = '';
+            }}
+          />
+          <button type="button" className="feed-attach-button" onClick={() => fileInputRef.current?.click()} disabled={attachments.length >= MAX_POST_IMAGES}>
+            <ImagePlus size={16} /> Добавить изображения
+          </button>
+          <span className="feed-editor-hint"><ClipboardPaste size={13} /> Ctrl+V или перетащи скриншот сюда</span>
+        </div>
+        <div className="composer-footer">
+          <span>{content.length}/1000</span>
+          <button className="primary-button" type="submit" disabled={(!content.trim() && !attachments.length) || posting}>
+            <Send size={15} />{posting ? 'Загружаем...' : 'Опубликовать'}
+          </button>
+        </div>
+      </div>
+      <div className="feed-upload-limits">JPG, PNG, WEBP или GIF · до 4 изображений · максимум 8 МБ каждое</div>
     </form>
 
     <div className="feed-list-heading"><div><h2>Последние публикации</h2><p>Общайся с другими игроками</p></div><button className="feed-refresh" onClick={() => load()} title="Обновить"><RefreshCw size={16} /></button></div>
@@ -151,7 +299,12 @@ export default function ActivityFeed() {
         <div className="feed-post-head"><Avatar author={post.author} /><div className="feed-author"><Link to={post.authorId === user?.id ? '/profile' : `/profile?user=${encodeURIComponent(post.author.username)}`}>{post.author.username}</Link><time>{formatDate(post.createdAt)}</time></div>
           {post.authorId === user?.id && <button className="feed-delete" onClick={() => removePost(post.id)} title="Удалить публикацию"><Trash2 size={16} /></button>}
         </div>
-        <p className="feed-post-content">{post.content}</p>
+        {post.content && <p className="feed-post-content">{post.content}</p>}
+        {post.images?.length > 0 && <div className={'feed-post-gallery count-' + Math.min(post.images.length, 4)}>
+          {post.images.map((image, index) => <button type="button" className="feed-post-image" key={image.id} onClick={() => setLightboxImage(getAssetUrl(image.url))} aria-label="Открыть изображение">
+            <img src={getAssetUrl(image.url)} alt={'Изображение публикации ' + (index + 1)} loading="lazy" />
+          </button>)}
+        </div>}
         <div className="feed-actions">
           <button className={post.likedByMe ? 'feed-action is-liked' : 'feed-action'} onClick={() => handleLike(post)} disabled={commentBusy[post.id]}>
             <Heart size={16} fill={post.likedByMe ? 'currentColor' : 'none'} /> Нравится <span>{post._count?.likes || 0}</span>
@@ -174,5 +327,10 @@ export default function ActivityFeed() {
       </article>)}
     </div>}
     {!loading && cursor && <button className="feed-more" onClick={() => load(cursor)} disabled={loadingMore}>{loadingMore ? 'Загружаем...' : 'Загрузить ещё'}</button>}
+
+    {lightboxImage && <div className="feed-image-lightbox" role="dialog" aria-modal="true" aria-label="Просмотр изображения" onClick={() => setLightboxImage('')}>
+      <button type="button" className="feed-image-lightbox-close" onClick={() => setLightboxImage('')} aria-label="Закрыть"><X size={22} /></button>
+      <img src={lightboxImage} alt="Полноразмерное изображение" onClick={event => event.stopPropagation()} />
+    </div>}
   </main>;
 }
