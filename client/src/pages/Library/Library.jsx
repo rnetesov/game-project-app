@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Gamepad2, Library, Search, Plus, Check, Trash2, X, RefreshCw } from 'lucide-react';
+import { Gamepad2, Library, Search, Plus, Check, Trash2, X, RefreshCw, Tags } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
   getGames,
+  addGameToCatalog,
   getUserGameLibrary,
   setGameLibraryStatus,
   removeGameFromLibrary,
@@ -21,6 +22,43 @@ const STATUS_LABELS = {
   WANT_TO_PLAY: 'Хочу пройти',
   COMPLETED: 'Пройдено',
 };
+
+const GENRES = [
+  { value: 'RPG', label: 'RPG' },
+  { value: 'Action', label: 'Экшен' },
+  { value: 'Shooter', label: 'Шутеры' },
+  { value: 'Racing', label: 'Гонки' },
+  { value: 'Roguelike', label: 'Рогалики' },
+  { value: 'Metroidvania', label: 'Метроидвании' },
+  { value: 'Simulator', label: 'Симуляторы' },
+  { value: 'Puzzle', label: 'Головоломки' },
+  { value: 'Sandbox', label: 'Песочницы' },
+  { value: 'Adventure', label: 'Приключения' },
+  { value: 'Horror', label: 'Хоррор' },
+];
+
+function genreLabel(value) {
+  return GENRES.find(genre => genre.value === value)?.label || value;
+}
+
+function GenreFilters({ value, onChange }) {
+  return (
+    <div className="library-genre-filters" role="group" aria-label="Фильтр по жанрам">
+      <button type="button" className={value === 'ALL' ? 'active' : ''} aria-pressed={value === 'ALL'} onClick={() => onChange('ALL')}>Все жанры</button>
+      {GENRES.map(genre => (
+        <button
+          type="button"
+          key={genre.value}
+          className={value === genre.value ? 'active' : ''}
+          aria-pressed={value === genre.value}
+          onClick={() => onChange(genre.value)}
+        >
+          {genre.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function GameCover({ game }) {
   return (
@@ -48,7 +86,8 @@ function GameTile({ game, status, readOnly, busy, onStatusChange, onRemove, cata
           <h3>{game.title}</h3>
           {status && <span className={'library-status-dot status-' + status.toLowerCase()} />}
         </div>
-        <p className="library-game-genre">{game.genre}</p>
+        <p className="library-game-genre">{genreLabel(game.genre)}{game.subGenre ? ' · ' + game.subGenre : ''}</p>
+        {catalog && game.createdBy?.username && <p className="library-game-added-by">Добавил @{game.createdBy.username}</p>}
         <p className="library-game-platforms">{game.platforms}</p>
         {readOnly ? (
           <span className={'library-status-label status-' + (status || '').toLowerCase()}>{STATUS_LABELS[status] || 'В библиотеке'}</span>
