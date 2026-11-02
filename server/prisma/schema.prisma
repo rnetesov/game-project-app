@@ -25,6 +25,7 @@ model User {
   notificationsSent     Notification[] @relation("NotificationActor")
   conversationMemberships ConversationMember[]
   sentMessages          Message[]
+  games                 UserGame[]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   @@index([createdAt])
@@ -156,4 +157,33 @@ model PostReaction {
   @@unique([postId, userId])
   @@index([postId, type])
   @@index([userId])
+}
+
+
+model Game {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  title       String     @unique
+  genre       String
+  platforms   String     @default("PC")
+  releaseYear Int?
+  coverUrl    String?
+  createdAt   DateTime   @default(now())
+  userGames   UserGame[]
+  @@index([title])
+  @@index([genre])
+}
+
+model UserGame {
+  id        String   @id @default(cuid())
+  userId    String
+  gameId    String
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  @@unique([userId, gameId])
+  @@index([userId, status, updatedAt])
+  @@index([gameId, status])
 }
