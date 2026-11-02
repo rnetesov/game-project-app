@@ -44,14 +44,25 @@ jobs:
       - name: Install server dependencies
         working-directory: server
         run: npm ci
-      - name: Check demo seeder syntax
+      - name: Check server source syntax
         working-directory: server
-        run: node --check prisma/seed-demo-posts.js
+        run: |
+          node --check src/controllers/notifications.controller.js
+          node --check src/routes/notifications.routes.js
+          node --check src/utils/notifications.js
+          node --check src/controllers/posts.controller.js
+          node --check src/controllers/friends.controller.js
+          node --check prisma/seed-demo-posts.js
       - name: Validate Prisma schema
         working-directory: server
         env:
           DATABASE_URL: file:./ci.db
         run: npx prisma validate
+      - name: Apply SQLite migrations
+        working-directory: server
+        env:
+          DATABASE_URL: file:./ci.db
+        run: npx prisma migrate deploy
       - name: Generate Prisma Client
         working-directory: server
         env:
