@@ -57,3 +57,13 @@ export function createPostComment(id, content) {
 export function deletePostComment(postId, commentId) {
   return request(`/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`, { method: 'DELETE', token: authToken() });
 }
+
+export function getNotifications(limit = 30) {
+  return request(`/notifications?limit=${limit}`, { token: authToken() });
+}
+export function markNotificationRead(id) {
+  return request(`/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH', token: authToken() });
+}
+export function markAllNotificationsRead() {
+  return request('/notifications/read-all', { method: 'PATCH', token: authToken() });
+}
