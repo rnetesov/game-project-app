@@ -254,6 +254,12 @@ export async function togglePostReaction(req, res, next) {
         create: { postId: post.id, userId: req.user.id, type: parsed.data.type },
         update: { type: parsed.data.type },
       });
+      await createNotification({
+        type: 'REACTION_' + parsed.data.type,
+        recipientId: post.authorId,
+        actorId: req.user.id,
+        postId: post.id,
+      });
     }
     const reactions = await prisma.postReaction.findMany({ where: { postId: post.id }, select: { type: true } });
     const reactionCounts = reactions.reduce((counts, reaction) => {
