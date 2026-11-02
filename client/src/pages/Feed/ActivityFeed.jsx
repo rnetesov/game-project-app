@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   MessageSquare, Send, Trash2, Newspaper, RefreshCw, Heart,
-  ImagePlus, X, Images, ClipboardPaste,
+  ImagePlus, X, ClipboardPaste,
 } from 'lucide-react';
 import {
   createPost, deletePost, getPosts, togglePostLike,
