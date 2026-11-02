@@ -6,6 +6,51 @@ import {
   removeUploadedFiles,
 } from '../middleware/post-upload.middleware.js';
 
+const RICH_CONTENT_PREFIX = 'GAMEHUB_RICH_V1:';
+const MAX_POST_TEXT_LENGTH = 1000;
+
+function getPostTextLength(content) {
+  if (!content.startsWith(RICH_CONTENT_PREFIX)) return content.length;
+
+  let document;
+  try {
+    document = JSON.parse(content.slice(RICH_CONTENT_PREFIX.length));
+  } catch {
+    throw new Error('Некорректный формат форматированного текста');
+  }
+  if (document?.format !== 1 || !Array.isArray(document.blocks) || document.blocks.length > 500) {
+    throw new Error('Некорректная структура форматированного текста');
+  }
+
+  let visitedNodes = 0;
+  const countInline = (nodes, depth = 0) => {
+    if (!Array.isArray(nodes) || depth > 20) throw new Error('Слишком сложное форматирование');
+    return nodes.reduce((total, node) => {
+      visitedNodes += 1;
+      if (visitedNodes > 3000 || !node || typeof node !== 'object') {
+        throw new Error('Слишком сложное форматирование');
+      }
+      if (node.type === 'text' && typeof node.text === 'string') return total + node.text.length;
+      if (node.type === 'break') return total + 1;
+      throw new Error('Некорректный элемент форматированного текста');
+    }, 0);
+  };
+
+  return document.blocks.reduce((total, block) => {
+    visitedNodes += 1;
+    if (visitedNodes > 3000 || !block || typeof block !== 'object') {
+      throw new Error('Слишком сложное форматирование');
+    }
+    if (block.type === 'paragraph' || block.type === 'heading') {
+      return total + countInline(block.children);
+    }
+    if (block.type === 'list' && Array.isArray(block.items)) {
+      return total + block.items.reduce((sum, item) => sum + countInline(item) + 1, 0);
+    }
+    throw new Error('Некорректный блок форматированного текста');
+  }, 0);
+}
+
 const postSelect = {
   id: true,
   content: true,
@@ -42,7 +87,7 @@ export async function listPosts(req, res, next) {
 export async function createPost(req, res, next) {
   const files = req.files || [];
   const parsed = z.object({
-    content: z.string().trim().max(1000, 'Максимум 1000 символов').default(''),
+    content: z.string().trim().max(100000, 'Слишком большой текст публикации').default(''),
   }).safeParse(req.body || {});
 
   if (!parsed.success) {
@@ -50,6 +95,17 @@ export async function createPost(req, res, next) {
     return res.status(400).json({
       success: false, message: parsed.error.issues[0]?.message || 'Некорректная публикация',
     });
+  }
+  let textLength;
+  try {
+    textLength = getPostTextLength(parsed.data.content);
+  } catch (error) {
+    await removeUploadedFiles(files);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+  if (textLength > MAX_POST_TEXT_LENGTH) {
+    await removeUploadedFiles(files);
+    return res.status(400).json({ success: false, message: 'Максимум 1000 символов в публикации' });
   }
   if (!parsed.data.content && files.length === 0) {
     return res.status(400).json({ success: false, message: 'Добавь текст или прикрепи изображение' });
