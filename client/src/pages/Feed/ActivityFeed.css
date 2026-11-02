@@ -61,3 +61,20 @@
 .feed-post-rich-content ul,.feed-post-rich-content ol{margin:8px 0;padding-left:22px}
 .feed-post-rich-content li{padding-left:2px;margin:3px 0}
 @media(max-width:700px){.feed-format-toolbar{gap:2px;padding:6px}.feed-format-button{width:29px;height:29px}.feed-format-divider{margin:0 2px}.feed-rich-input{min-height:120px;padding:12px;font-size:12px}.feed-rich-footer{font-size:8px}}
+
+/* Edit published post */
+.feed-edit-trigger{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;background:#f6f6fb;color:#8c8fa1}
+.feed-edit-trigger:hover{background:#f0efff;color:#716be0}
+.feed-edit-form{display:flex;flex-direction:column;gap:12px;margin-top:16px;padding:14px;border:1px solid #e9e8fb;border-radius:11px;background:#fcfcff}
+.feed-edit-heading strong,.feed-edit-heading span{display:block}
+.feed-edit-heading strong{color:#45475b;font-size:12px}
+.feed-edit-heading span{margin-top:4px;color:#a1a3b2;font-size:10px}
+.feed-edit-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.feed-edit-actions{display:flex;align-items:center;gap:8px}
+.feed-edit-cancel{padding:9px 12px;border:1px solid #e8e9f0;border-radius:8px;background:#fff;color:#777a8c;font-size:10px;font-weight:700}
+.feed-edit-cancel:hover{background:#f5f5f9}
+.feed-edit-actions .primary-button{display:inline-flex;align-items:center;gap:7px}
+.feed-edit-actions button:disabled{opacity:.55;cursor:not-allowed}
+.feed-spin{animation:feed-spin .9s linear infinite}
+@keyframes feed-spin{to{transform:rotate(360deg)}}
+@media(max-width:700px){.feed-edit-footer{align-items:flex-start;flex-direction:column}.feed-edit-actions{width:100%;justify-content:flex-end}}
