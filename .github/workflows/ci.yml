@@ -53,6 +53,9 @@ jobs:
           node --check src/controllers/conversations.controller.js
           node --check src/routes/conversations.routes.js
           node --check src/controllers/posts.controller.js
+          node --check src/controllers/games.controller.js
+          node --check src/routes/games.routes.js
+          node --check src/app.js
           node --check src/middleware/post-upload.middleware.js
           node --check src/config/upload-paths.js
           node --check src/controllers/friends.controller.js
