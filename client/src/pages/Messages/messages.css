@@ -80,3 +80,8 @@
 @media(max-width:850px){.messages-layout{grid-template-columns:250px minmax(0,1fr);min-height:560px}.messages-friend-list{grid-template-columns:repeat(2,minmax(0,1fr))}.messages-heading h1{font-size:22px}}
 @media(max-width:650px){.messages-heading{align-items:flex-start}.messages-layout{display:flex;flex-direction:column;max-height:none;min-height:0}.messages-conversation-panel{border-right:0;border-bottom:1px solid #eff0f5;max-height:230px}.messages-conversation-list{overflow:auto}.messages-chat-panel{min-height:520px}.messages-history{min-height:300px}.messages-chat-header{flex:none}.messages-friend-list{grid-template-columns:1fr}.messages-bubble-row{max-width:94%}.messages-new-button{padding:9px 10px;font-size:9px}}
 @media(prefers-reduced-motion:reduce){.messages-spin{animation:none}}
+
+.messages-user-search{height:40px;display:flex;align-items:center;gap:9px;padding:0 11px;margin:10px 0 12px;border:1px solid #e8e9f0;border-radius:9px;color:#999cad}
+.messages-user-search:focus-within{border-color:#8983ed;box-shadow:0 0 0 3px #8983ed18}
+.messages-user-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#34364a;font:inherit;font-size:10px}
+.messages-suggested-label{margin:11px 0 8px;color:#999cad;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
