@@ -1,13 +1,16 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware.js';
-import { heartbeat, listFriends, listRequests, removeFriend, respondRequest, searchUsers, sendRequest } from '../controllers/friends.controller.js';
+import { cancelRequest, getRelationship, heartbeat, listFriends, listRequests, listSentRequests, removeFriend, respondRequest, searchUsers, sendRequest } from '../controllers/friends.controller.js';
 const router = Router();
 router.use(requireAuth);
 router.get('/search', searchUsers);
 router.get('/', listFriends);
 router.get('/requests', listRequests);
+router.get('/requests/sent', listSentRequests);
 router.post('/requests', sendRequest);
 router.patch('/requests/:id', respondRequest);
+router.delete('/requests/:id', cancelRequest);
+router.get('/:userId/relationship', getRelationship);
 router.delete('/:userId', removeFriend);
 router.post('/heartbeat', heartbeat);
 export default router;
