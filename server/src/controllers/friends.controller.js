@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
+import { createNotification } from '../utils/notifications.js';
 
 const userSelect = { id: true, username: true, avatarUrl: true, bio: true, level: true, lastSeenAt: true };
 const onlineSince = () => new Date(Date.now() - 90 * 1000);
@@ -64,11 +65,13 @@ export async function sendRequest(req, res) {
   if (existing?.status === 'PENDING') {
     if (existing.receiverId === req.user.id) {
       const accepted = await prisma.friendRequest.update({ where: { id: existing.id }, data: { status: 'ACCEPTED' } });
+      await createNotification({ type: 'FRIEND_ACCEPTED', recipientId: existing.senderId, actorId: req.user.id });
       return res.json({ success: true, message: 'Заявка принята', request: accepted });
     }
     return res.status(409).json({ success: false, message: 'Заявка уже отправлена' });
   }
   const request = await prisma.friendRequest.create({ data: { senderId: req.user.id, receiverId: userId } });
+  await createNotification({ type: 'FRIEND_REQUEST', recipientId: userId, actorId: req.user.id });
   res.status(201).json({ success: true, message: 'Заявка отправлена', request });
 }
 
@@ -79,6 +82,7 @@ export async function respondRequest(req, res) {
   if (!request) return res.status(404).json({ success: false, message: 'Заявка не найдена' });
   if (parsed.data.action === 'accept') {
     await prisma.friendRequest.update({ where: { id: request.id }, data: { status: 'ACCEPTED' } });
+    await createNotification({ type: 'FRIEND_ACCEPTED', recipientId: request.senderId, actorId: req.user.id });
     return res.json({ success: true, message: 'Теперь вы друзья' });
   }
   await prisma.friendRequest.delete({ where: { id: request.id } });
