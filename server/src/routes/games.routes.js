@@ -4,6 +4,7 @@ import { parseGameCoverMultipart } from '../middleware/game-cover-upload.middlew
 import { asyncHandler } from '../utils/async-handler.js';
 import {
   listGames,
+  getGameBySlug,
   addGameToCatalog,
   getUserLibrary,
   setLibraryStatus,
@@ -13,6 +14,7 @@ import {
 const router = Router();
 router.use(requireAuth);
 router.get('/', asyncHandler(listGames));
+router.get('/by-slug/:slug', asyncHandler(getGameBySlug));
 router.post('/', parseGameCoverMultipart, asyncHandler(addGameToCatalog));
 router.get('/library/:username', asyncHandler(getUserLibrary));
 router.put('/:gameId/library', asyncHandler(setLibraryStatus));

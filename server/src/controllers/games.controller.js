@@ -62,6 +62,25 @@ export async function listGames(req, res, next) {
   } catch (error) { next(error); }
 }
 
+export async function getGameBySlug(req, res, next) {
+  try {
+    const game = await prisma.game.findUnique({
+      where: { slug: req.params.slug },
+      select: {
+        ...gameSelect,
+        userGames: {
+          where: { userId: req.user.id },
+          select: { status: true },
+          take: 1,
+        },
+      },
+    });
+    if (!game) return res.status(404).json({ success: false, message: 'Игра не найдена в каталоге' });
+    const { userGames, ...gameData } = game;
+    return res.json({ success: true, game: { ...gameData, libraryStatus: userGames[0]?.status || null } });
+  } catch (error) { next(error); }
+}
+
 function createGameSlug(title) {
   const slug = title
     .normalize('NFKC')

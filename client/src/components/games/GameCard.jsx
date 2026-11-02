@@ -28,7 +28,7 @@ export default function GameCard({ game, status }) {
       </div>
       <div className="game-info">
         <div><h3>{game.title}</h3><p>{game.platforms || 'PC'}{game.releaseYear ? ' · ' + game.releaseYear : ''}</p></div>
-        <Link className="card-arrow" to="/library" aria-label={'Открыть библиотеку: ' + game.title}>
+        <Link className="card-arrow" to={'/games/' + encodeURIComponent(game.slug)} aria-label={'Открыть страницу игры: ' + game.title}>
           <ArrowUpRight size={18} />
         </Link>
       </div>

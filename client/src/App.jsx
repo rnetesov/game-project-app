@@ -7,6 +7,7 @@ import Friends from './pages/Friends/Friends.jsx';
 import ActivityFeed from './pages/Feed/ActivityFeed.jsx';
 import Messages from './pages/Messages/Messages.jsx';
 import LibraryPage from './pages/Library/Library.jsx';
+import GameDetails from './pages/GameDetails/GameDetails.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 
 function ProtectedLayout() {
@@ -24,6 +25,7 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/library" element={<LibraryPage />} />
+      <Route path="/games/:slug" element={<GameDetails />} />
       <Route path="/friends" element={<Friends />} />
       <Route path="/feed" element={<ActivityFeed />} />
       <Route path="/messages" element={<Messages />} />

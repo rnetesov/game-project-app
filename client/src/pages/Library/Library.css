@@ -34,7 +34,7 @@
 .library-cover-year{position:absolute;right:9px;bottom:8px;padding:4px 6px;border-radius:5px;background:#17182dbb;color:#fff;font-size:8px;font-weight:800}
 .library-game-card-body{padding:12px}
 .library-game-title-row{display:flex;align-items:center;gap:8px}
-.library-game-title-row h3{min-width:0;flex:1;overflow:hidden;margin:0;color:#36384c;font-size:12px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+.library-game-title-row h3,.library-game-title-link{min-width:0;flex:1;overflow:hidden;margin:0;color:#36384c;font-size:12px;font-weight:700;line-height:1.35;text-decoration:none;text-overflow:ellipsis;white-space:nowrap}.library-game-title-link:hover{color:#716be0}
 .library-game-genre{margin:6px 0 0;color:#7771e8;font-size:9px;font-weight:700}
 .library-game-platforms{min-height:24px;margin:5px 0 10px;color:#a2a4b2;font-size:8px;line-height:1.5}
 .library-game-controls{display:flex;align-items:flex-end;gap:7px}

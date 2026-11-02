@@ -101,6 +101,9 @@ export function getGames(query = '', genre = '') {
   if (genre) params.set('genre', genre);
   return request('/games' + (params.toString() ? '?' + params.toString() : ''), { token: authToken() });
 }
+export function getGameBySlug(slug) {
+  return request('/games/by-slug/' + encodeURIComponent(slug), { token: authToken() });
+}
 export function addGameToCatalog(payload) {
   const formData = new FormData();
   formData.append('title', payload.title);

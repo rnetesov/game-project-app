@@ -31,7 +31,7 @@ All `/api/posts`, `/api/friends`, `/api/notifications`, `/api/conversations`, an
 - **Activity feed:** create, edit, and delete own posts; rich text; up to four JPG/PNG/WEBP/GIF images; all/friends/popular filters; text/author search; five reactions; comments, threaded replies, and `@username` mentions.
 - **Messages:** direct conversations with any registered user; cursor-based message history; unread counts and read receipts; up to five attachments per message, with a 10 MB per-file and 25 MB aggregate limit. The client polls conversations and active messages instead of using WebSockets.
 - **Notifications:** reaction, comment, reply, mention, friend, and message events; unread counts; read actions; in-app toasts and browser notifications while the site is open. Web Push after the site/browser closes is not implemented.
-- **Games:** searchable genre-filtered catalog; community game submission with an optional cover; a user's library with `PLAYING`, `WANT_TO_PLAY`, and `COMPLETED` states; read-only viewing of another user's library.
+- **Games:** searchable genre-filtered catalog; separate game pages with cover, metadata, description, submitter, and library-status controls; community game submission with an optional cover; a user's library with `PLAYING`, `WANT_TO_PLAY`, and `COMPLETED` states; read-only viewing of another user's library.
 
 The Prisma schema includes users, friend requests, posts/images/likes/reactions, comments, notifications, conversations/members/messages/attachments, games, and user-game library entries.
 
@@ -41,7 +41,7 @@ Re-check these before changing them; this is a snapshot, not a promise that the 
 
 - Achievements are not implemented as a data model or feature; there is no achievements route or sidebar link. The home page now uses library and friend data, shows recent library entries, and links into the catalog when the library is empty. The top-bar game search opens the catalog with the query applied. Profile pages show online presence and allow sending or accepting friend requests.
 - The home page still has no playtime metric because the library stores statuses but no session duration. It also has no achievements summary until achievements are implemented.
-- Game catalog pages do not include game details, ratings, reviews, playtime, or game discussions. The user library tracks only one of the three statuses per game.
+- Games do not have ratings, reviews, playtime, or discussions. The user library tracks only one of the three statuses per game.
 - Notification retrieval is capped at 50 items and has no history pagination. Conversations are capped at 100; the game catalog is capped at 200. These limits may need pagination if the product grows.
 - The demo seed writes legacy `PostLike` rows, while the current feed uses `PostReaction`; seeded likes do not populate the reaction UI.
 - Profile images are external URLs; there is no avatar upload. Password reset and email verification are not implemented.

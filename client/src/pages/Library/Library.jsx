@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Gamepad2, Library, Search, Plus, Check, Trash2, X, RefreshCw, Tags } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
@@ -84,7 +84,7 @@ function GameTile({ game, status, readOnly, busy, onStatusChange, onRemove, cata
       <GameCover game={game} />
       <div className="library-game-card-body">
         <div className="library-game-title-row">
-          <h3>{game.title}</h3>
+          <Link className="library-game-title-link" to={'/games/' + encodeURIComponent(game.slug)}>{game.title}</Link>
           {status && <span className={'library-status-dot status-' + status.toLowerCase()} />}
         </div>
         <p className="library-game-genre">{genreLabel(game.genre)}{game.subGenre ? ' · ' + game.subGenre : ''}</p>
