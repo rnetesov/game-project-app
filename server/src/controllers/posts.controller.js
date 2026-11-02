@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
+import { createNotification } from '../utils/notifications.js';
 
 const postSelect = {
   id: true,
@@ -65,7 +66,7 @@ export async function deletePost(req, res, next) {
 
 export async function togglePostLike(req, res, next) {
   try {
-    const post = await prisma.post.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    const post = await prisma.post.findUnique({ where: { id: req.params.id }, select: { id: true, authorId: true } });
     if (!post) return res.status(404).json({ success: false, message: 'Публикация не найдена' });
     const where = { postId_userId: { postId: post.id, userId: req.user.id } };
     const existing = await prisma.postLike.findUnique({ where });
@@ -75,6 +76,7 @@ export async function togglePostLike(req, res, next) {
       return res.json({ success: true, liked: false, count });
     }
     await prisma.postLike.create({ data: { postId: post.id, userId: req.user.id } });
+    await createNotification({ type: 'LIKE', recipientId: post.authorId, actorId: req.user.id, postId: post.id });
     const count = await prisma.postLike.count({ where: { postId: post.id } });
     res.json({ success: true, liked: true, count });
   } catch (error) { next(error); }
@@ -104,7 +106,7 @@ export async function createPostComment(req, res, next) {
     success: false, message: parsed.error.issues[0]?.message || 'Некорректный комментарий',
   });
   try {
-    const post = await prisma.post.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    const post = await prisma.post.findUnique({ where: { id: req.params.id }, select: { id: true, authorId: true } });
     if (!post) return res.status(404).json({ success: false, message: 'Публикация не найдена' });
     const comment = await prisma.comment.create({
       data: { postId: post.id, authorId: req.user.id, content: parsed.data.content },
@@ -113,6 +115,7 @@ export async function createPostComment(req, res, next) {
         author: { select: { id: true, username: true, avatarUrl: true } },
       },
     });
+    await createNotification({ type: 'COMMENT', recipientId: post.authorId, actorId: req.user.id, postId: post.id });
     res.status(201).json({ success: true, comment });
   } catch (error) { next(error); }
 }
