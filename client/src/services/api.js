@@ -102,7 +102,17 @@ export function getGames(query = '', genre = '') {
   return request('/games' + (params.toString() ? '?' + params.toString() : ''), { token: authToken() });
 }
 export function addGameToCatalog(payload) {
-  return request('/games', { method: 'POST', token: authToken(), body: JSON.stringify(payload) });
+  const formData = new FormData();
+  formData.append('title', payload.title);
+  formData.append('description', payload.description);
+  formData.append('genre', payload.genre);
+  formData.append('subGenre', payload.subGenre || '');
+  formData.append('platforms', payload.platforms);
+  formData.append('releaseYear', payload.releaseYear == null ? '' : String(payload.releaseYear));
+  if (payload.coverFile) {
+    formData.append('cover', payload.coverFile, payload.coverFile.name || 'game-cover.png');
+  }
+  return request('/games', { method: 'POST', token: authToken(), body: formData });
 }
 export function getUserGameLibrary(username) {
   return request('/games/library/' + encodeURIComponent(username), { token: authToken() });
