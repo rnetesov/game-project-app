@@ -44,7 +44,7 @@ function getPostTextLength(content) {
     if (block.type === 'paragraph' || block.type === 'heading') {
       return total + countInline(block.children);
     }
-    if (block.type === 'list' && Array.isArray(block.items)) {
+    if (block.type === 'list' && Array.isArray(block.items) && block.items.length <= 500) {
       return total + block.items.reduce((sum, item) => sum + countInline(item) + 1, 0);
     }
     throw new Error('Некорректный блок форматированного текста');
