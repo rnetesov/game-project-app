@@ -130,7 +130,7 @@ export default function Profile() {
                   <div className="library-cover-fallback"><Gamepad2 size={24}/><span>{entry.game.title}</span></div>
                   {entry.game.coverUrl && <img src={entry.game.coverUrl} alt={'Обложка ' + entry.game.title} loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }}/>}
                 </div>
-                <div><strong>{entry.game.title}</strong><span className={'library-status-label status-' + entry.status.toLowerCase()}>{({ PLAYING: 'Играю сейчас', WANT_TO_PLAY: 'Хочу пройти', COMPLETED: 'Пройдено' })[entry.status]}</span></div>
+                <div><strong>{entry.game.title}</strong><small className="profile-library-genre">{entry.game.genre}{entry.game.subGenre ? ' · ' + entry.game.subGenre : ''}</small><span className={'library-status-label status-' + entry.status.toLowerCase()}>{({ PLAYING: 'Играю сейчас', WANT_TO_PLAY: 'Хочу пройти', COMPLETED: 'Пройдено' })[entry.status]}</span></div>
               </article>
             ))}
           </div>
