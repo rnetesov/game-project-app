@@ -63,7 +63,7 @@
 .messages-start-hint svg{color:#8984e8}
 .messages-start-hint strong{color:#55586b;font-size:12px}
 .messages-start-hint span{font-size:10px}
-.messages-composer{padding:12px 15px;border-top:1px solid #eff0f5;background:#fff}
+.messages-composer{position:relative;padding:12px 15px;border-top:1px solid #eff0f5;background:#fff}
 .messages-composer textarea{display:block;width:100%;min-height:48px;max-height:120px;resize:vertical;padding:10px 11px;border:1px solid #e8e9f0;border-radius:9px;outline:0;color:#34364a;font:inherit;font-size:11px;line-height:1.5}
 .messages-composer textarea:focus{border-color:#8983ed;box-shadow:0 0 0 3px #8983ed18}
 .messages-composer-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
