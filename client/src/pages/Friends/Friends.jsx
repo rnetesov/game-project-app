@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Clock3, Search, UserMinus, UserPlus, Users, X, RefreshCw } from 'lucide-react';
+import { Check, Clock3, Search, UserMinus, Users, X, RefreshCw } from 'lucide-react';
 import { getFriends, getFriendRequests, getSentFriendRequests, cancelFriendRequest, removeFriend, respondFriendRequest, searchPlayers } from '../../services/api.js';
 import FriendAction from '../../components/FriendAction.jsx';
 
@@ -81,7 +81,7 @@ export default function Friends() {
       {requestView === 'incoming'
         ? requests.length ? requests.map(({ id, user }) => <PlayerCard key={id} user={user} action={<><button className="friend-action accept" disabled={!!busy} onClick={() => run(id, () => respondFriendRequest(id, 'accept'), 'Заявка принята')}><Check size={15}/> Принять</button><button className="friend-action remove" disabled={!!busy} onClick={() => run(id, () => respondFriendRequest(id, 'decline'), 'Заявка отклонена')}><X size={15}/> Отклонить</button></>}/>) : <div className="friends-empty"><Clock3 size={28}/><h3>Нет входящих заявок</h3><p>Новые приглашения от игроков появятся здесь.</p></div>
         : sentRequests.length ? sentRequests.map(({ id, user }) => <PlayerCard key={id} user={user} action={<button className="friend-action remove" disabled={!!busy} onClick={() => run(id, () => cancelFriendRequest(id), 'Заявка отменена')}><X size={15}/> Отменить заявку</button>}/>) : <div className="friends-empty"><Clock3 size={28}/><h3>Нет исходящих заявок</h3><p>Заявки, которые ты отправил другим игрокам, появятся здесь.</p></div>}
-    </section>}
+    </section></>}
     <button className="friends-refresh" onClick={load}><RefreshCw size={14}/> Обновить список</button>
   </div>;
 }
