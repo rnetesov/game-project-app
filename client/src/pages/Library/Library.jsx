@@ -413,10 +413,50 @@ export default function LibraryPage() {
                 <label>Год выпуска <span className="library-field-optional">необязательно</span>
                   <input type="number" min="1970" max={new Date().getFullYear() + 2} value={gameDraft.releaseYear} onChange={event => setGameDraft(current => ({ ...current, releaseYear: event.target.value }))} placeholder="2025" />
                 </label>
+                <label className="library-game-cover-field">Обложка игры <span className="library-field-optional">JPG, PNG, WEBP или GIF · до 5 МБ</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={event => {
+                      const file = event.target.files?.[0] || null;
+                      if (file && !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+                        setError('Поддерживаются только JPG, PNG, WEBP и GIF');
+                        event.target.value = '';
+                        return;
+                      }
+                      if (file && file.size > 5 * 1024 * 1024) {
+                        setError('Размер обложки не должен превышать 5 МБ');
+                        event.target.value = '';
+                        return;
+                      }
+                      setError('');
+                      setGameDraft(current => ({ ...current, coverFile: file }));
+                    }}
+                  />
+                </label>
               </div>
+              <label className="library-game-description-field">Краткое описание
+                <textarea
+                  value={gameDraft.description}
+                  onChange={event => setGameDraft(current => ({ ...current, description: event.target.value }))}
+                  minLength={10}
+                  maxLength={400}
+                  required
+                  rows={3}
+                  placeholder="Расскажи в нескольких предложениях, что это за игра и чем в ней предстоит заниматься..."
+                />
+                <span className="library-field-counter">{gameDraft.description.length}/400 · минимум 10 символов</span>
+              </label>
+              {coverPreview && (
+                <div className="library-cover-preview">
+                  <img src={coverPreview} alt="Предпросмотр обложки игры" />
+                  <div><strong>{gameDraft.coverFile?.name}</strong><span>Предпросмотр обложки</span></div>
+                  <button type="button" onClick={() => setGameDraft(current => ({ ...current, coverFile: null }))} aria-label="Убрать выбранную обложку"><X size={15} /></button>
+                </div>
+              )}
               <div className="library-add-game-footer">
-                <span>Проверяем повторы. Лимит — 10 новых игр за 24 часа.</span>
-                <button type="submit" className="primary-button" disabled={submittingGame || gameDraft.title.trim().length < 2 || gameDraft.platforms.trim().length < 2}>
+                <span>Краткое описание обязательно. Обложка необязательна. Лимит — 10 игр за 24 часа.</span>
+                <button type="submit" className="primary-button" disabled={submittingGame || gameDraft.title.trim().length < 2 || gameDraft.description.trim().length < 10 || gameDraft.platforms.trim().length < 2}>
                   <Plus size={15} /> {submittingGame ? 'Добавляем...' : 'Добавить в каталог'}
                 </button>
               </div>
