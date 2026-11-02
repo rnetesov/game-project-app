@@ -22,8 +22,11 @@ function ToolbarButton({ label, icon: Icon, onClick }) {
 
 export default function RichTextEditor({ editorRef, onChange, onImagePaste, textLength, initialContent = '' }) {
   useEffect(() => {
-    if (editorRef.current) editorRef.current.innerHTML = richContentToEditorHtml(initialContent);
-  }, [editorRef, initialContent]);
+    if (!editorRef.current) return;
+    editorRef.current.innerHTML = richContentToEditorHtml(initialContent);
+    const result = serializeRichDocument(editorRef.current);
+    onChange(result.content, result.textLength);
+  }, [editorRef, initialContent, onChange]);
 
   const syncContent = useCallback(() => {
     const result = serializeRichDocument(editorRef.current);
