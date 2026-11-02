@@ -101,7 +101,6 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true);
   const [busyGames, setBusyGames] = useState({});
   const [error, setError] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const refreshLibrary = useCallback(async () => {
     const result = await getUserGameLibrary(viewedUsername);
@@ -129,7 +128,7 @@ export default function LibraryPage() {
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [viewedUsername, isOwnLibrary, refreshKey]);
+  }, [viewedUsername, isOwnLibrary]);
 
   const visibleEntries = useMemo(() => entries.filter(entry =>
     activeStatus === 'ALL' || entry.status === activeStatus
