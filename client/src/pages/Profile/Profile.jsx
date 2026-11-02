@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Camera, Check, Edit3, Gamepad2, ShieldCheck, Trophy, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { getProfile, updateMyProfile } from '../../services/api.js';
@@ -9,6 +10,9 @@ function initials(name = '') {
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
+  const [searchParams] = useSearchParams();
+  const viewedUsername = searchParams.get('user') || user?.username;
+  const isOwnProfile = viewedUsername === user?.username;
   const [profile, setProfile] = useState(user);
   const [editing, setEditing] = useState(false);
   const [username, setUsername] = useState(user?.username || '');
@@ -19,8 +23,8 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!user?.username) return;
-    getProfile(user.username)
+    if (!viewedUsername) return;
+    getProfile(viewedUsername)
       .then(({ user: data }) => {
         setProfile(data);
         setUsername(data.username);
@@ -28,7 +32,7 @@ export default function Profile() {
         setAvatarUrl(data.avatarUrl || '');
       })
       .catch((err) => setError(err.message));
-  }, [user?.username]);
+  }, [viewedUsername]);
 
   async function save(event) {
     event.preventDefault();
@@ -56,8 +60,8 @@ export default function Profile() {
   return (
     <div className="profile-page">
       <div className="profile-title-row">
-        <div><div className="eyebrow">ТВОЯ ИГРОВАЯ ЛИЧНОСТЬ</div><h1>Профиль игрока</h1><p>Управляй своим профилем и показывай достижения.</p></div>
-        {!editing && <button className="primary-button" onClick={() => { setEditing(true); setMessage(''); setError(''); }}><Edit3 size={16}/> Редактировать</button>}
+        <div><div className="eyebrow">ТВОЯ ИГРОВАЯ ЛИЧНОСТЬ</div><h1>{isOwnProfile ? 'Профиль игрока' : 'Профиль пользователя'}</h1><p>{isOwnProfile ? 'Управляй своим профилем и показывай достижения.' : 'Информация об игроке GameHub.'}</p></div>
+        {isOwnProfile && !editing && <button className="primary-button" onClick={() => { setEditing(true); setMessage(''); setError(''); }}><Edit3 size={16}/> Редактировать</button>}
       </div>
 
       <section className="profile-hero">
@@ -77,7 +81,7 @@ export default function Profile() {
       {message && <div className="profile-success"><Check size={16}/>{message}</div>}
       {error && <div className="auth-error profile-message">{error}</div>}
 
-      {editing && <form className="profile-edit-card" onSubmit={save}>
+      {isOwnProfile && editing && <form className="profile-edit-card" onSubmit={save}>
         <div className="section-heading"><div><h2>Редактирование профиля</h2><p>Измени публичную информацию об аккаунте.</p></div><button type="button" className="profile-close" onClick={() => setEditing(false)} aria-label="Закрыть"><X size={18}/></button></div>
         <label>Никнейм<input value={username} onChange={(e) => setUsername(e.target.value)} minLength={3} maxLength={20} required /></label>
         <label>О себе<textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={160} rows={3} placeholder="Расскажи немного о себе..."/></label>

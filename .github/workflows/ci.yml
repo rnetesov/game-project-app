@@ -1,0 +1,56 @@
+name: GameHub CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main, "feature/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  client-build:
+    name: Client production build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+      - name: Build client
+        working-directory: client
+        run: npm run build
+
+  server-check:
+    name: Server and Prisma validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+      - name: Validate Prisma schema
+        working-directory: server
+        env:
+          DATABASE_URL: file:./ci.db
+        run: npx prisma validate
+      - name: Generate Prisma Client
+        working-directory: server
+        env:
+          DATABASE_URL: file:./ci.db
+        run: npx prisma generate
