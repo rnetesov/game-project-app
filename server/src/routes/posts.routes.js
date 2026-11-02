@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { parsePostMultipart } from '../middleware/post-upload.middleware.js';
 import {
-  createPost, updatePost, deletePost, listPosts, togglePostLike,
+  createPost, updatePost, deletePost, listPosts,
   listPostComments, createPostComment, deletePostComment, togglePostReaction, listPostReactions,
 } from '../controllers/posts.controller.js';
 
