@@ -51,8 +51,8 @@ export function createPost(content, images = []) {
 
 export function getAssetUrl(path) {
   if (!path) return '';
-  if (/^https?:\\/\\//i.test(path)) return path;
-  const apiOrigin = API_URL.replace(/\\/api\\/?$/, '');
+  if (/^https?:\/\//i.test(path)) return path;
+  const apiOrigin = API_URL.replace(/\/api\/?$/, '');
   return new URL(path, apiOrigin + '/').toString();
 }
 export function deletePost(id) {
