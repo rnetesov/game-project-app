@@ -143,32 +143,39 @@
 }
 
 
-/* Profile links in conversations and message history */
+/* Non-interactive player identity inside conversations */
 .messages-friend-option{display:flex;align-items:center;gap:8px}
-.messages-friend-profile{display:flex;align-items:center;gap:9px;flex:1;min-width:0;color:inherit;text-decoration:none}
+.messages-friend-profile{display:flex;align-items:center;gap:9px;flex:1;min-width:0;color:inherit}
 .messages-friend-profile>span{min-width:0;flex:1}
 .messages-friend-profile strong,.messages-friend-profile small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .messages-friend-profile strong{font-size:10px;color:#34364a}
 .messages-friend-profile small{margin-top:3px;color:#9b9eae;font-size:9px}
-.messages-friend-profile:hover strong,.messages-conversation-profile:hover strong,.messages-chat-profile:hover strong,.messages-sender-profile:hover{color:#716be0}
-.messages-friend-profile:focus-visible,.messages-conversation-profile:focus-visible,.messages-chat-profile:focus-visible,.messages-sender-profile:focus-visible{outline:2px solid #918bed;outline-offset:3px;border-radius:6px}
 .messages-friend-message{width:29px;height:29px;display:grid;place-items:center;flex:none;border-radius:7px;background:#f0efff;color:#7771e8}
 .messages-friend-message:hover{background:#e8e6ff;color:#625bd5}
 .messages-conversation-item{gap:8px}
-.messages-conversation-profile{display:flex;align-items:center;gap:8px;flex:0 1 45%;min-width:0;color:inherit;text-decoration:none}
+.messages-conversation-profile{display:flex;align-items:center;gap:8px;flex:0 1 45%;min-width:0;color:inherit}
 .messages-conversation-profile .messages-avatar{width:38px;height:38px;border-radius:11px}
 .messages-conversation-profile strong{min-width:0;overflow:hidden;color:#34364a;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
 .messages-conversation-open{display:block;flex:1;min-width:0;padding:0;background:transparent;text-align:left}
 .messages-conversation-open small{display:block;overflow:hidden;color:#999cad;font-size:9px;text-overflow:ellipsis;white-space:nowrap}
 .messages-conversation-open:hover small{color:#716be0}
-.messages-chat-profile{display:flex;align-items:center;gap:10px;min-width:0;color:inherit;text-decoration:none}
+.messages-chat-header{justify-content:space-between}
+.messages-chat-profile{display:flex;align-items:center;gap:10px;min-width:0;color:inherit}
 .messages-chat-profile>span{min-width:0}
 .messages-chat-profile strong,.messages-chat-profile small{display:block}
 .messages-chat-profile strong{color:#34364a;font-size:11px}
 .messages-chat-profile small{margin-top:4px;color:#a1a3b2;font-size:9px}
-.messages-sender-profile{display:block;width:fit-content;margin-bottom:5px;color:#7771e8;font-size:9px;font-weight:800;text-decoration:none}
+.messages-sender-name{display:block;width:fit-content;margin-bottom:5px;color:#7771e8;font-size:9px;font-weight:800}
+.messages-clear-history{width:32px;height:32px;display:grid;place-items:center;flex:none;border-radius:8px;background:#fff2f1;color:#c77872;transition:background .15s,color .15s}
+.messages-clear-history:hover{background:#ffe7e5;color:#b95f58}
+.messages-clear-history:disabled{opacity:.55;cursor:wait}
+.messages-delete-message{display:grid;place-items:center;width:23px;height:23px;flex:none;border-radius:6px;background:transparent;color:#b2a6a7;opacity:0;transition:opacity .15s,background .15s,color .15s}
+.messages-delete-message:hover{background:#fff0ef;color:#c66f68}
+.messages-bubble-row:hover .messages-delete-message,.messages-delete-message:focus-visible{opacity:1}
+.messages-delete-message:disabled{opacity:.45;cursor:wait}
+.messages-deleted-message{color:#a3a5b2!important;font-size:10px!important;font-style:italic}
 @media(max-width:850px){.messages-conversation-profile{flex-basis:45%}.messages-conversation-profile .messages-avatar{width:34px;height:34px}}
-@media(max-width:650px){.messages-conversation-profile{flex-basis:42%}.messages-conversation-profile .messages-avatar{width:34px;height:34px}}
+@media(max-width:650px){.messages-conversation-profile{flex-basis:42%}.messages-conversation-profile .messages-avatar{width:34px;height:34px}.messages-delete-message{opacity:.8}}
 
 
 /* Read receipts for outgoing direct messages */
