@@ -39,6 +39,9 @@ export function getPosts({ cursor, limit = 10 } = {}) {
   if (cursor) params.set('cursor', cursor);
   return request('/posts?' + params.toString(), { token: authToken() });
 }
+export function getPost(id) {
+  return request('/posts/' + encodeURIComponent(id), { token: authToken() });
+}
 export function createPost(content, images = []) {
   if (!images.length) {
     return request('/posts', { method: 'POST', token: authToken(), body: JSON.stringify({ content }) });
