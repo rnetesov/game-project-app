@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { parsePostMultipart } from '../middleware/post-upload.middleware.js';
 import {
-  createPost, deletePost, listPosts, togglePostLike,
+  createPost, updatePost, deletePost, listPosts, togglePostLike,
   listPostComments, createPostComment, deletePostComment,
 } from '../controllers/posts.controller.js';
 
@@ -10,6 +10,7 @@ const router = Router();
 router.use(requireAuth);
 router.get('/', listPosts);
 router.post('/', parsePostMultipart, createPost);
+router.patch('/:id', parsePostMultipart, updatePost);
 router.delete('/:id', deletePost);
 router.put('/:id/like', togglePostLike);
 router.get('/:id/comments', listPostComments);

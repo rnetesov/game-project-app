@@ -164,6 +164,48 @@ function renderRichBlocks(blocks = []) {
   });
 }
 
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character]);
+}
+
+function inlineToEditorHtml(nodes = []) {
+  if (!Array.isArray(nodes)) return '';
+  return nodes.map(node => {
+    if (node.type === 'break') return '<br>';
+    if (node.type !== 'text' || typeof node.text !== 'string') return '';
+    let html = escapeHtml(node.text);
+    if (node.href && isSafeLink(node.href)) html = '<a href="' + escapeHtml(node.href) + '">' + html + '</a>';
+    if (node.underline) html = '<u>' + html + '</u>';
+    if (node.italic) html = '<em>' + html + '</em>';
+    if (node.bold) html = '<strong>' + html + '</strong>';
+    return html;
+  }).join('');
+}
+
+export function richContentToEditorHtml(content) {
+  if (typeof content !== 'string') return '';
+  if (!content.startsWith(RICH_CONTENT_PREFIX)) {
+    return content ? '<p>' + escapeHtml(content).replace(/\\n/g, '<br>') + '</p>' : '';
+  }
+  try {
+    const document = JSON.parse(content.slice(RICH_CONTENT_PREFIX.length));
+    if (document?.format !== 1 || !Array.isArray(document.blocks)) return '';
+    return document.blocks.map(block => {
+      if (block.type === 'list' && Array.isArray(block.items)) {
+        const tag = block.ordered ? 'ol' : 'ul';
+        return '<' + tag + '>' + block.items.map(item => '<li>' + inlineToEditorHtml(item) + '</li>').join('') + '</' + tag + '>';
+      }
+      if (block.type === 'heading') return '<h2>' + inlineToEditorHtml(block.children) + '</h2>';
+      if (block.type === 'paragraph') return '<p>' + inlineToEditorHtml(block.children) + '</p>';
+      return '';
+    }).join('');
+  } catch {
+    return '';
+  }
+}
+
 export function renderPostContent(content) {
   if (typeof content !== 'string') return null;
   if (!content.startsWith(RICH_CONTENT_PREFIX)) {
