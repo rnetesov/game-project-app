@@ -85,3 +85,59 @@
 .messages-user-search:focus-within{border-color:#8983ed;box-shadow:0 0 0 3px #8983ed18}
 .messages-user-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#34364a;font:inherit;font-size:10px}
 .messages-suggested-label{margin:11px 0 8px;color:#999cad;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+
+/* Keep the chat composer visible while only the message history scrolls. */
+@media (min-width: 701px) {
+  .messages-page {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 139px);
+    min-height: 0;
+  }
+
+  .messages-heading,
+  .messages-alert,
+  .messages-friend-picker {
+    flex: 0 0 auto;
+  }
+
+  .messages-friend-picker {
+    max-height: 190px;
+    overflow-y: auto;
+  }
+
+  .messages-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .messages-chat-panel {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .messages-chat-header,
+  .messages-composer {
+    flex: 0 0 auto;
+  }
+
+  .messages-history {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (min-width: 701px) and (max-width: 1050px) {
+  .messages-page {
+    height: calc(100vh - 138px);
+  }
+}
+
+@media (max-width: 700px) {
+  .messages-page {
+    height: auto;
+    min-height: 0;
+  }
+}
