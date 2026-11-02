@@ -59,3 +59,40 @@
 .notification-error{margin:10px 13px;padding:8px 10px;border-radius:7px;background:#fff2f1;color:#bd6c67;font-size:9px}
 .notification-panel-foot{padding:9px 14px;background:#fbfbfd;border-top:1px solid #eff0f5;text-align:center;color:#b0b2bf;font-size:8px}
 @media(max-width:600px){.notification-panel{right:-86px;width:340px}.topbar-actions{gap:7px}}
+
+/* Rich notification toasts and browser-tab awareness */
+.notification-trigger.has-unread svg{animation:notificationBellPulse 2.8s ease-in-out infinite;transform-origin:50% 12%}
+@keyframes notificationBellPulse{0%,78%,100%{transform:rotate(0)}82%{transform:rotate(12deg)}86%{transform:rotate(-10deg)}90%{transform:rotate(6deg)}94%{transform:rotate(-3deg)}}
+.notification-permission-row{padding:10px 14px;border-bottom:1px solid #eff0f5;background:#fcfcff}
+.permission-enable{display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border-radius:8px;background:#f0efff;color:#6963d4;font-size:10px;font-weight:800}
+.permission-enable:hover{background:#e8e6ff}
+.permission-enabled,.permission-blocked{display:flex;align-items:center;gap:7px;font-size:9px;color:#55a37b}
+.permission-blocked{color:#b77c54}
+.notification-list-icon{width:30px;height:30px;flex:none;border-radius:10px;display:grid;place-items:center}
+.icon-comment{background:#edf4ff;color:#538bd9}
+.icon-like{background:#fff0f2;color:#e16b81}
+.icon-friend_request{background:#eff9f3;color:#4da77b}
+.icon-friend_accepted{background:#f3efff;color:#8170d6}
+.notification-toast-stack{position:fixed;z-index:1000;top:92px;right:24px;width:min(390px,calc(100vw - 32px));display:grid;gap:11px;pointer-events:none}
+.notification-toast{position:relative;overflow:hidden;background:#fff;border:1px solid #e9eaf3;border-radius:15px;box-shadow:0 15px 42px #292b4a24;pointer-events:auto;animation:notificationToastIn .32s cubic-bezier(.2,.8,.2,1) both}
+.notification-toast-main{display:flex;align-items:center;gap:11px;width:100%;padding:15px 38px 17px 14px;background:transparent;text-align:left}
+.notification-toast-main:hover{background:#fcfbff}
+.notification-toast-icon{width:39px;height:39px;display:grid;place-items:center;flex:none;border-radius:12px;background:#f0efff;color:#716be0}
+.toast-comment .notification-toast-icon{background:#edf4ff;color:#538bd9}
+.toast-like .notification-toast-icon{background:#fff0f2;color:#e16b81}
+.toast-friend_request .notification-toast-icon{background:#eff9f3;color:#4da77b}
+.toast-friend_accepted .notification-toast-icon{background:#f3efff;color:#8170d6}
+.notification-toast-content{display:grid;gap:4px;min-width:0;flex:1}
+.notification-toast-content>strong{font-size:11px;color:#303247;font-weight:800}
+.notification-toast-content>span{font-size:10px;line-height:1.45;color:#777a8c;overflow-wrap:anywhere}
+.notification-toast-content>span b{color:#383a50}
+.notification-toast-content>small{font-size:9px;color:#827ce5;font-weight:700;margin-top:2px}
+.notification-toast-avatar{width:36px;height:36px;border-radius:11px;object-fit:cover;flex:none}
+.notification-toast-avatar.fallback{display:grid;place-items:center;background:#e9e8ff;color:#716be0;font-size:12px;font-weight:800}
+.notification-toast-close{position:absolute;top:8px;right:8px;width:23px;height:23px;display:grid;place-items:center;border-radius:7px;background:transparent;color:#a2a4b2}
+.notification-toast-close:hover{background:#f2f1f8;color:#55586b}
+.notification-toast-progress{position:absolute;left:0;bottom:0;width:100%;height:3px;background:linear-gradient(90deg,#7771e8,#b5b0ff);transform-origin:left;animation:notificationToastProgress 7s linear forwards}
+@keyframes notificationToastIn{from{opacity:0;transform:translateX(28px) scale(.98)}to{opacity:1;transform:translateX(0) scale(1)}}
+@keyframes notificationToastProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@media(max-width:600px){.notification-toast-stack{top:68px;right:10px;width:calc(100vw - 20px)}.notification-toast-main{padding:13px 34px 15px 11px}.notification-toast-avatar{width:31px;height:31px}.notification-toast-icon{width:35px;height:35px}}
+@media(prefers-reduced-motion:reduce){.notification-toast,.notification-toast-progress,.notification-trigger.has-unread svg{animation:none}}
