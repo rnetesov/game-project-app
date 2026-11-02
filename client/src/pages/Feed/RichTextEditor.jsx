@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   Bold, Italic, Underline, List, ListOrdered, Heading2,
   Link2, Pilcrow, RemoveFormatting, Undo2, Redo2,
@@ -21,12 +21,15 @@ function ToolbarButton({ label, icon: Icon, onClick }) {
 }
 
 export default function RichTextEditor({ editorRef, onChange, onImagePaste, textLength, initialContent = '' }) {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   useEffect(() => {
     if (!editorRef.current) return;
     editorRef.current.innerHTML = richContentToEditorHtml(initialContent);
     const result = serializeRichDocument(editorRef.current);
-    onChange(result.content, result.textLength);
-  }, [editorRef, initialContent, onChange]);
+    onChangeRef.current(result.content, result.textLength);
+  }, [editorRef, initialContent]);
 
   const syncContent = useCallback(() => {
     const result = serializeRichDocument(editorRef.current);
