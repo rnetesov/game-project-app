@@ -125,6 +125,7 @@ function countDocumentText(blocks = []) {
 }
 
 function renderInline(nodes = [], prefix = 'inline') {
+  if (!Array.isArray(nodes)) return null;
   return nodes.map((node, index) => {
     const key = prefix + '-' + index;
     if (node.type === 'break') return <br key={key} />;
