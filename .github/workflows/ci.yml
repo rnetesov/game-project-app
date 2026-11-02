@@ -44,6 +44,9 @@ jobs:
       - name: Install server dependencies
         working-directory: server
         run: npm ci
+      - name: Check demo seeder syntax
+        working-directory: server
+        run: node --check prisma/seed-demo-posts.js
       - name: Validate Prisma schema
         working-directory: server
         env:
