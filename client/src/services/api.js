@@ -34,9 +34,10 @@ export function respondFriendRequest(id, action) { return request('/friends/requ
 export function removeFriend(userId) { return request('/friends/' + userId, { method: 'DELETE', token: authToken() }); }
 export function sendHeartbeat() { return request('/friends/heartbeat', { method: 'POST', token: authToken() }); }
 
-export function getPosts({ cursor, limit = 10 } = {}) {
-  const params = new URLSearchParams({ limit: String(limit) });
+export function getPosts({ cursor, limit = 10, filter = 'all', query = '' } = {}) {
+  const params = new URLSearchParams({ limit: String(limit), filter });
   if (cursor) params.set('cursor', cursor);
+  if (query.trim()) params.set('q', query.trim());
   return request('/posts?' + params.toString(), { token: authToken() });
 }
 export function getPost(id) {
