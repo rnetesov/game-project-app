@@ -71,8 +71,13 @@ export function deletePost(id) {
   return request('/posts/' + encodeURIComponent(id), { method: 'DELETE', token: authToken() });
 }
 
-export function togglePostLike(id) {
-  return request('/posts/' + encodeURIComponent(id) + '/like', { method: 'PUT', token: authToken() });
+export function togglePostReaction(id, type) {
+  return request('/posts/' + encodeURIComponent(id) + '/reactions', {
+    method: 'PUT', token: authToken(), body: JSON.stringify({ type }),
+  });
+}
+export function getPostReactions(id) {
+  return request('/posts/' + encodeURIComponent(id) + '/reactions', { token: authToken() });
 }
 export function getPostComments(id) {
   return request('/posts/' + encodeURIComponent(id) + '/comments', { token: authToken() });
