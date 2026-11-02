@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MessageCircle, Plus, Send, Users, ArrowDown, LoaderCircle, Search } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
   getConversations,
@@ -275,11 +275,15 @@ export default function Messages() {
               : playerResults.length
                 ? <div className="messages-friend-list">
                     {peopleToShow.map(person => (
-                      <button key={person.id} className="messages-friend-option" onClick={() => startConversation(person)}>
-                        <Avatar user={person} small />
-                        <span><strong>{person.username}</strong><small>{person.relationship === 'FRIENDS' ? 'Уже в друзьях' : person.online ? 'В сети' : 'Игрок GameHub'}</small></span>
-                        <MessageCircle size={16} />
-                      </button>
+                      <div key={person.id} className="messages-friend-option">
+                        <Link className="messages-friend-profile" to={'/profile?user=' + encodeURIComponent(person.username)}>
+                          <Avatar user={person} small />
+                          <span><strong>{person.username}</strong><small>{person.relationship === 'FRIENDS' ? 'Уже в друзьях' : person.online ? 'В сети' : 'Игрок GameHub'}</small></span>
+                        </Link>
+                        <button type="button" className="messages-friend-message" onClick={() => startConversation(person)} title={'Написать ' + person.username} aria-label={'Написать ' + person.username}>
+                          <MessageCircle size={16} />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 : <div className="messages-picker-empty">Игроков с таким никнеймом не найдено.</div>
@@ -290,11 +294,15 @@ export default function Messages() {
                     <div className="messages-suggested-label">Или начни с друга</div>
                     <div className="messages-friend-list">
                       {friends.map(friend => (
-                        <button key={friend.id} className="messages-friend-option" onClick={() => startConversation(friend)}>
-                          <Avatar user={friend} small />
-                          <span><strong>{friend.username}</strong><small>{friend.online ? 'В сети' : 'Не в сети'}</small></span>
-                          <MessageCircle size={16} />
-                        </button>
+                        <div key={friend.id} className="messages-friend-option">
+                          <Link className="messages-friend-profile" to={'/profile?user=' + encodeURIComponent(friend.username)}>
+                            <Avatar user={friend} small />
+                            <span><strong>{friend.username}</strong><small>{friend.online ? 'В сети' : 'Не в сети'}</small></span>
+                          </Link>
+                          <button type="button" className="messages-friend-message" onClick={() => startConversation(friend)} title={'Написать ' + friend.username} aria-label={'Написать ' + friend.username}>
+                            <MessageCircle size={16} />
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </>
@@ -308,23 +316,29 @@ export default function Messages() {
           <div className="messages-conversation-list">
             {loading ? <div className="messages-list-empty">Загружаем...</div>
               : conversations.length ? conversations.map(item => (
-                <button
+                <div
                   key={item.id}
                   className={'messages-conversation-item' + (item.id === selectedId ? ' active' : '')}
-                  onClick={() => setSearchParams({ conversation: item.id })}
                 >
-                  <Avatar user={item.otherUser} />
-                  <span className="messages-conversation-copy">
+                  <Link className="messages-conversation-profile" to={'/profile?user=' + encodeURIComponent(item.otherUser?.username || '')}>
+                    <Avatar user={item.otherUser} />
                     <strong>{item.otherUser?.username || 'Игрок'}</strong>
+                  </Link>
+                  <button
+                    type="button"
+                    className="messages-conversation-open"
+                    onClick={() => setSearchParams({ conversation: item.id })}
+                    aria-label={'Открыть переписку с ' + (item.otherUser?.username || 'игроком')}
+                  >
                     <small>{item.lastMessage
                       ? (item.lastMessage.senderId === user?.id ? 'Вы: ' : '') + item.lastMessage.content
                       : 'Начните общение'}</small>
-                  </span>
+                  </button>
                   <span className="messages-conversation-meta">
                     <time>{formatDay(item.lastMessage?.createdAt || item.updatedAt)}</time>
                     {item.unreadCount > 0 && <i>{item.unreadCount > 99 ? '99+' : item.unreadCount}</i>}
                   </span>
-                </button>
+                </div>
               )) : <div className="messages-list-empty"><MessageCircle size={24}/><strong>Пока нет диалогов</strong><span>Нажми «Новый диалог», чтобы написать любому игроку.</span></div>}
           </div>
         </aside>
@@ -333,8 +347,10 @@ export default function Messages() {
           {selectedConversation ? (
             <>
               <header className="messages-chat-header">
-                <Avatar user={selectedConversation.otherUser} small />
-                <div><strong>{selectedConversation.otherUser?.username || 'Игрок'}</strong><small>Личная переписка</small></div>
+                <Link className="messages-chat-profile" to={'/profile?user=' + encodeURIComponent(selectedConversation.otherUser?.username || '')}>
+                  <Avatar user={selectedConversation.otherUser} small />
+                  <span><strong>{selectedConversation.otherUser?.username || 'Игрок'}</strong><small>Открыть профиль · Личная переписка</small></span>
+                </Link>
               </header>
               <div className="messages-history" ref={listRef}>
                 {nextCursor && <button className="messages-load-older" onClick={loadOlder} disabled={loadingOlder}>
@@ -346,7 +362,7 @@ export default function Messages() {
                   return <article key={message.id} className={'messages-bubble-row' + (own ? ' own' : '')}>
                     {!own && <Avatar user={message.sender} small />}
                     <div className="messages-bubble">
-                      {!own && <strong>{message.sender?.username}</strong>}
+                      {!own && <Link className="messages-sender-profile" to={'/profile?user=' + encodeURIComponent(message.sender?.username || '')}>{message.sender?.username}</Link>}
                       <p>{message.content}</p>
                       <time>{formatTime(message.createdAt)}</time>
                     </div>
