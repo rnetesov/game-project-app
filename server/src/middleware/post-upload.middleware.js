@@ -167,8 +167,13 @@ export async function parsePostMultipart(req, res, next) {
           url: '/uploads/post-images/' + filename,
         });
       } else {
-        if (disposition.name !== 'content') throw uploadError('Неизвестное поле формы');
-        req.body.content = part.data.toString('utf8');
+        if (!['content', 'keepImageIds'].includes(disposition.name)) {
+          throw uploadError('Неизвестное поле формы');
+        }
+        if (Object.prototype.hasOwnProperty.call(req.body, disposition.name)) {
+          throw uploadError('Поле формы передано несколько раз');
+        }
+        req.body[disposition.name] = part.data.toString('utf8');
       }
     }
 
