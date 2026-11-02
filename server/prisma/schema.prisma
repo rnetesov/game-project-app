@@ -1,12 +1,10 @@
 generator client {
   provider = "prisma-client-js"
 }
-
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
-
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
@@ -19,12 +17,11 @@ model User {
   lastSeenAt   DateTime @default(now())
   sentRequests FriendRequest[] @relation("RequestSender")
   receivedRequests FriendRequest[] @relation("RequestReceiver")
+  posts        Post[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
   @@index([createdAt])
 }
-
 model FriendRequest {
   id         String   @id @default(cuid())
   senderId   String
@@ -34,8 +31,17 @@ model FriendRequest {
   updatedAt  DateTime @updatedAt
   sender     User     @relation("RequestSender", fields: [senderId], references: [id], onDelete: Cascade)
   receiver   User     @relation("RequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
-
   @@unique([senderId, receiverId])
   @@index([receiverId, status])
   @@index([senderId, status])
+}
+model Post {
+  id        String   @id @default(cuid())
+  content   String
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@index([createdAt])
+  @@index([authorId])
 }
